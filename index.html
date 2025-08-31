@@ -35,8 +35,18 @@
     /* Плавные появления */
     .fade-in{ animation: fade .25s ease-out; }
     @keyframes fade{ from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+    /* Плавные появление/исчезновение экранов */
+    .view-enter { animation: fade .22s ease-out forwards; }
+    .view-leave { animation: fadeOut .18s ease-in forwards; }
+    @keyframes fadeOut { from{opacity:1;transform:translateY(0)} to{opacity:.0;transform:translateY(4px)} }
+
+    /* Появление карточек со ступенчатой задержкой */
+    .card-appear { opacity: 0; transform: translateY(8px); animation: cardIn .35s ease-out forwards; animation-delay: var(--delay,0ms); }
+    @keyframes cardIn { to { opacity: 1; transform: none; } }
   </style>
 </head>
+
 <body class="surface min-h-screen">
   <!-- Header -->
   <header class="px-4 py-3 border-b" style="border-color:var(--sep)">
@@ -64,6 +74,7 @@
         <h2 id="detailTitle" class="text-xl font-semibold"></h2>
         <p id="detailShort" class="muted"></p>
         <div id="detailBullets" class="space-y-2"></div>
+        <div id="detailLong" class="text-sm leading-relaxed space-y-2"></div>
         <div class="pt-2 flex flex-wrap gap-2">
           <button id="consultBtn" class="btn rounded-lg px-4 py-2 text-sm">Получить консультацию</button>
           <button id="buyBtn" class="rounded-lg px-4 py-2 text-sm border" style="border-color:var(--sep)">Добавить в заявку</button>
