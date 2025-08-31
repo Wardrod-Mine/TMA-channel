@@ -1,3 +1,26 @@
+const cartBtn = $('#cartBtn');
+const cartCount = $('#cartCount');
+const toastEl = $('#toast');
+
+// Модалка консультации
+const consultModal = $('#consultModal');
+const consultForm = $('#consultForm');
+const consultCancel = $('#consultCancel');
+const consultProductTitle = $('#consultProductTitle');
+const cName = $('#cName');
+const cContact = $('#cContact');
+const cMsg = $('#cMsg');
+
+// Простая "корзина-заявка" в sessionStorage
+let CART = loadCart();
+
+function loadCart(){
+  try { return JSON.parse(sessionStorage.getItem('cart') || '{"items":[]}'); }
+  catch(e){ return { items: [] }; }
+}
+function saveCart(){ sessionStorage.setItem('cart', JSON.stringify(CART)); }
+function inCart(id){ return CART.items.some(x => x.id === id); }
+
 // ====== ДАННЫЕ ================================================================
 const PRODUCTS = [
   {
@@ -50,6 +73,119 @@ const PRODUCTS = [
   }
 ];
 
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.remove('hidden');
+  toastEl.style.opacity = '1';
+  setTimeout(()=>{ toastEl.style.opacity='0'; setTimeout(()=>toastEl.classList.add('hidden'),200); },1600);
+}
+
+function updateCartUI(){
+  const n = CART.items.length;
+  cartCount.textContent = n;
+  if (n>0) {
+    cartBtn.classList.remove('hidden');
+    if (inTelegram) {
+      tg.MainButton.setParams({ text: `Отправить заявку (${n})` });
+      tg.MainButton.show();
+      tg.offEvent?.('mainButtonClicked');
+      tg.onEvent('mainButtonClicked', sendCart);
+    }
+  } else {
+    cartBtn.classList.add('hidden');
+    if (location.hash.startsWith('#/product/')) {
+      // на детальном экране, если корзина пуста — кнопка управляется showDetail()
+    } else if (inTelegram) {
+      tg.MainButton.hide();
+      tg.offEvent?.('mainButtonClicked');
+    }
+  }
+}
+
+function addToCart(product){
+  if (inCart(product.id)) {
+    toast('Уже в заявке');
+    return;
+  }
+  CART.items.push({ id: product.id, title: product.title });
+  saveCart();
+  toast('Добавлено в заявку');
+  tg?.HapticFeedback?.notificationOccurred?.('success');
+  updateCartUI();
+}
+
+function sendCart(){
+  if (CART.items.length === 0) return;
+  const payload = {
+    v: 1,
+    type: 'lead',
+    action: 'send_cart',
+    items: CART.items,
+    at: new Date().toISOString()
+  };
+  if (inTelegram) {
+    window.Telegram.WebApp.sendData(JSON.stringify(payload));
+    tg.MainButton.setParams({ text: 'Заявка отправлена ✅' });
+    setTimeout(()=> updateCartUI(), 1500);
+  } else {
+    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
+  }
+  CART = { items: [] };
+  saveCart();
+  updateCartUI();
+}
+
+let consultContext = null;
+
+function openConsult(product){
+  consultContext = product;
+  consultProductTitle.textContent = product.title;
+  cName.value = '';
+  cContact.value = '';
+  cMsg.value = '';
+  consultModal.classList.remove('hidden');
+}
+function closeConsult(){
+  consultModal.classList.add('hidden');
+  consultContext = null;
+}
+
+consultCancel.addEventListener('click', closeConsult);
+consultForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const contact = cContact.value.trim();
+  if (!contact) { toast('Укажите контакт'); return; }
+
+  const payload = {
+    v: 1,
+    type: 'lead',
+    action: 'consult',
+    product: consultContext ? { id: consultContext.id, title: consultContext.title } : null,
+    name: cName.value.trim() || null,
+    contact,
+    message: cMsg.value.trim() || null,
+    at: new Date().toISOString()
+  };
+
+  if (inTelegram) {
+    window.Telegram.WebApp.sendData(JSON.stringify(payload));
+    tg.HapticFeedback?.notificationOccurred?.('success');
+  } else {
+    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
+  }
+  closeConsult();
+  toast('Запрос отправлен');
+});
+
+cartBtn.addEventListener('click', ()=>{
+  if (CART.items.length === 0) return;
+  if (!inTelegram) {
+    if (!confirm(`Отправить заявку (${CART.items.length})?`)) return;
+  }
+  sendCart();
+});
+
+
 // ====== DOM ===================================================================
 const $ = (sel, root = document) => root.querySelector(sel);
 const listView = $('#listView');
@@ -61,7 +197,7 @@ const detailShort = $('#detailShort');
 const detailBullets = $('#detailBullets');
 const detailLong = $('#detailLong'); // <-- был пропущен
 const usernameSlot = $('#usernameSlot');
-const closeBtn = $('#closeBtn');
+const closeBtn = $('#backBtn');
 const consultBtn = $('#consultBtn');
 const buyBtn = $('#buyBtn');
 
@@ -78,8 +214,9 @@ if (inTelegram) {
   tg.onEvent('themeChanged', applyThemeFromTelegram);
   const username = tg.initDataUnsafe?.user?.username;
   if (username) usernameSlot.textContent = `@${username}`;
-  closeBtn.classList.remove('hidden');
-  closeBtn.addEventListener('click', () => tg.close());
+  backBtn.addEventListener('click', () => {
+    if (location.hash.startsWith('#/product/')) location.hash = '#/';
+  });
 } else {
   usernameSlot.textContent = 'Откройте через Telegram для полного функционала';
 }
@@ -211,26 +348,35 @@ function showDetail(productId) {
     detailLong.appendChild(para);
   });
 
-  switchViews(listView, detailView);
+  backBtn.classList.remove('hidden');
 
+  consultBtn.onclick = () => openConsult(p);
+  buyBtn.onclick = () => addToCart(p);
+
+  // если корзина пуста — оставим кнопку по товару; если нет — показываем корзину
   if (inTelegram) {
-    tg.BackButton.show();
-    tg.MainButton.setParams({ text: `Отправить заявку: ${p.title}` });
-    tg.MainButton.show();
-    tg.offEvent?.('mainButtonClicked');
-    tg.onEvent('mainButtonClicked', () => prepareSend(p, 'send_request', true));
+    if (CART.items.length === 0) {
+      tg.MainButton.setParams({ text: `Отправить заявку: ${p.title}` });
+      tg.MainButton.show();
+      tg.offEvent?.('mainButtonClicked');
+      tg.onEvent('mainButtonClicked', () => prepareSend(p, 'send_request', true));
+    } else {
+      updateCartUI();
+    }
   }
+
 
   consultBtn.onclick = () => prepareSend(p, 'consult');
   buyBtn.onclick = () => prepareSend(p, 'add_to_request');
 }
 
 function showList() {
-  switchViews(detailView, listView);
+  backBtn.classList.add('hidden');
   if (inTelegram) {
     tg.BackButton.hide();
     tg.MainButton.hide();
     tg.offEvent?.('mainButtonClicked');
+    updateCartUI();
   }
 }
 
@@ -266,6 +412,7 @@ function handleStartParam(raw) {
 
 // ====== BOOT ===================================================================
 renderCards();
+updateCartUI();
 handleStartParam(getStartParam());
 window.addEventListener('hashchange', router);
 router();

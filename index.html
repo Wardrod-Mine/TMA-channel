@@ -47,12 +47,57 @@
   </style>
 </head>
 
+<!-- Modal: Консультация -->
+<div id="consultModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0" style="background:rgba(0,0,0,.5)"></div>
+  <div class="relative max-w-md mx-auto mt-16 card rounded-xl overflow-hidden">
+    <div class="p-4 border-b" style="border-color:var(--sep)">
+      <h3 class="text-lg font-semibold">Запрос консультации</h3>
+      <p class="text-xs muted" id="consultProductTitle"></p>
+    </div>
+    <form id="consultForm" class="p-4 space-y-3">
+      <label class="block text-sm">
+        <span class="muted">Ваше имя (необязательно)</span>
+        <input id="cName" type="text" class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
+               style="border-color:var(--sep)" autocomplete="name" />
+      </label>
+      <label class="block text-sm">
+        <span class="muted">Контакт (телефон, @username или e-mail) *</span>
+        <input id="cContact" type="text" required class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
+               style="border-color:var(--sep)" placeholder="+79991234567 / @user / mail@example.com" />
+      </label>
+      <label class="block text-sm">
+        <span class="muted">Комментарий (вопрос)</span>
+        <textarea id="cMsg" rows="3" class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
+                  style="border-color:var(--sep)" placeholder="Кратко опишите задачу"></textarea>
+      </label>
+      <div class="flex gap-2 pt-2">
+        <button type="button" id="consultCancel"
+                class="rounded-lg px-4 py-2 text-sm border" style="border-color:var(--sep)">Отмена</button>
+        <button type="submit" id="consultSubmit" class="btn rounded-lg px-4 py-2 text-sm">Отправить</button>
+      </div>
+      <p class="text-xs muted">Данные отправятся боту через безопасный <code>sendData</code> (без токенов на фронте).</p>
+    </form>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-4 px-4 py-2 rounded-lg card text-sm hidden"></div>
+
+<!-- скрипт с новой версией, чтобы не было кэша -->
+<script type="module" src="./app.js?v=4"></script>
+
+
 <body class="surface min-h-screen">
   <!-- Header -->
   <header class="px-4 py-3 border-b" style="border-color:var(--sep)">
+    <button id="cartBtn" class="rounded-lg px-3 py-2 text-sm border hidden"
+        style="border-color:var(--sep)">
+      Заявка <span id="cartCount" class="ml-1">0</span>
+    </button>
     <div class="max-w-5xl mx-auto flex items-center gap-3">
-      <button id="closeBtn" class="btn rounded-lg px-3 py-2 text-sm hidden">Закрыть</button>
-      <h1 class="text-lg font-semibold">Магазин решений: ТМА и боты</h1>
+      <button id="backBtn" class="btn rounded-lg px-3 py-2 text-sm hidden">Назад</button>
+      <h1 class="text-lg font-semibold">Магазин решений</h1>
       <span class="ml-auto text-sm muted" id="usernameSlot"></span>
     </div>
   </header>
@@ -85,6 +130,6 @@
   </main>
 
   <!-- App logic -->
-  <script type="module" src="./app.js?v=2"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
