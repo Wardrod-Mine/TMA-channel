@@ -1,4 +1,4 @@
-// ====== БАЗОВЫЕ ДАННЫЕ ВИТРИНЫ =================================================
+// ====== ДАННЫЕ ================================================================
 const PRODUCTS = [
   {
     id: 'tma',
@@ -50,8 +50,7 @@ const PRODUCTS = [
   }
 ];
 
-
-// ====== УТИЛИТЫ DOM =============================================================
+// ====== DOM ===================================================================
 const $ = (sel, root = document) => root.querySelector(sel);
 const listView = $('#listView');
 const detailView = $('#detailView');
@@ -60,45 +59,31 @@ const detailImg = $('#detailImg');
 const detailTitle = $('#detailTitle');
 const detailShort = $('#detailShort');
 const detailBullets = $('#detailBullets');
+const detailLong = $('#detailLong'); // <-- был пропущен
 const usernameSlot = $('#usernameSlot');
 const closeBtn = $('#closeBtn');
 const consultBtn = $('#consultBtn');
 const buyBtn = $('#buyBtn');
 
-// ====== ИНИЦИАЛИЗАЦИЯ TELEGRAM WEBAPP ==========================================
+// ====== TELEGRAM WEBAPP =======================================================
 const tg = window.Telegram?.WebApp;
-
-// Безопасный гардер: приложение должно нормально работать и вне Telegram (в браузере)
 const inTelegram = Boolean(tg && typeof tg.initData !== 'undefined');
 
 if (inTelegram) {
   tg.ready();
   tg.expand();
-
-  // Кнопка "Назад" Telegram — используем на детальной странице
   tg.BackButton.onClick(() => {
-    // возвращаемся к списку
-    if (location.hash.startsWith('#/product/')) {
-      location.hash = '#/';
-    }
+    if (location.hash.startsWith('#/product/')) location.hash = '#/';
   });
-
-  // Реакция на смену темы клиентом Telegram
   tg.onEvent('themeChanged', applyThemeFromTelegram);
-
-  // Показать ник (если есть) в шапке
   const username = tg.initDataUnsafe?.user?.username;
   if (username) usernameSlot.textContent = `@${username}`;
-
-  // Кнопка "Закрыть" как дублирование для наглядности
   closeBtn.classList.remove('hidden');
   closeBtn.addEventListener('click', () => tg.close());
 } else {
-  // В браузере: покажем подсказку
   usernameSlot.textContent = 'Откройте через Telegram для полного функционала';
 }
 
-// Применяем цвета темы
 function applyThemeFromTelegram() {
   if (!inTelegram) return;
   const tp = tg.themeParams || {};
@@ -115,13 +100,13 @@ function applyThemeFromTelegram() {
 }
 applyThemeFromTelegram();
 
-// ====== РЕНДЕР КАРТОЧЕК =========================================================
+// ====== UI РЕНДЕР =============================================================
 function renderCards() {
   cardsRoot.innerHTML = '';
   PRODUCTS.forEach((p, i) => {
     const card = document.createElement('article');
     card.className = 'card rounded-xl overflow-hidden transition hover:scale-[1.01] card-appear';
-    card.style.setProperty('--delay', `${i * 60}ms`); // ступенчатая задержка
+    card.style.setProperty('--delay', `${i * 60}ms`);
 
     const link = document.createElement('a');
     link.href = `#/product/${p.id}`;
@@ -157,6 +142,7 @@ function renderCards() {
   });
 }
 
+// плавный свитч экранов
 function switchViews(hideEl, showEl) {
   if (hideEl && !hideEl.classList.contains('hidden')) {
     hideEl.classList.remove('view-enter');
@@ -175,6 +161,28 @@ function switchViews(hideEl, showEl) {
   }
 }
 
+// ====== ОТПРАВКА ДАННЫХ БОТУ ===================================================
+function prepareSend(product, action, viaMainButton = false) {
+  const payload = {
+    v: 1,
+    type: 'lead',
+    action,
+    product: { id: product.id, title: product.title },
+    at: new Date().toISOString()
+  };
+  if (inTelegram) {
+    window.Telegram.WebApp.sendData(JSON.stringify(payload));
+    if (viaMainButton) {
+      tg.HapticFeedback?.impactOccurred?.('light');
+      tg.MainButton.setParams({ text: 'Заявка отправлена ✅' });
+      setTimeout(() => tg.MainButton.setParams({ text: `Отправить заявку: ${product.title}` }), 1500);
+    }
+  } else {
+    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
+  }
+}
+
+// ====== ЭКРАНЫ =================================================================
 function showDetail(productId) {
   const p = PRODUCTS.find(x => x.id === productId);
   if (!p) return showList();
@@ -195,7 +203,7 @@ function showDetail(productId) {
   });
   detailBullets.appendChild(ul);
 
-  // long description
+  // long
   detailLong.innerHTML = '';
   (p.long || []).forEach(par => {
     const para = document.createElement('p');
@@ -203,7 +211,6 @@ function showDetail(productId) {
     detailLong.appendChild(para);
   });
 
-  // переключение экранов с анимацией
   switchViews(listView, detailView);
 
   if (inTelegram) {
@@ -220,7 +227,6 @@ function showDetail(productId) {
 
 function showList() {
   switchViews(detailView, listView);
-
   if (inTelegram) {
     tg.BackButton.hide();
     tg.MainButton.hide();
@@ -228,97 +234,7 @@ function showList() {
   }
 }
 
-renderCards();
-
-// Если прилетел стартовый параметр — откроем соответствующий экран
-const startParam = getStartParam();
-handleStartParam(startParam);
-
-window.addEventListener('hashchange', router);
-router();
-
-// ====== ДЕТАЛЬНЫЙ ЭКРАН =========================================================
-function showDetail(productId) {
-  const p = PRODUCTS.find(x => x.id === productId);
-  if (!p) return showList();
-
-  detailImg.src = p.img;
-  detailImg.alt = p.title;
-  detailTitle.textContent = p.title;
-  detailShort.textContent = p.short;
-
-  detailBullets.innerHTML = '';
-  const ul = document.createElement('ul');
-  ul.className = 'list-disc ml-5';
-  p.bullets.forEach(b => {
-    const li = document.createElement('li');
-    li.textContent = b;
-    ul.appendChild(li);
-  });
-  detailBullets.appendChild(ul);
-
-  // Переключение экранов
-  listView.classList.add('hidden');
-  detailView.classList.remove('hidden');
-
-  // Telegram UI: показать BackButton и MainButton
-  if (inTelegram) {
-    tg.BackButton.show();
-    tg.MainButton.setParams({ text: `Отправить заявку: ${p.title}` });
-    tg.MainButton.show();
-    tg.onEvent('mainButtonClicked', onMainButton);
-  }
-
-  // Обычные кнопки на экране
-  consultBtn.onclick = () => prepareSend(p, 'consult');
-  buyBtn.onclick = () => prepareSend(p, 'add_to_request');
-
-  function onMainButton() {
-    prepareSend(p, 'send_request', true);
-  }
-}
-
-// Подготовка и отправка данных в бота
-function prepareSend(product, action, viaMainButton = false) {
-  const payload = {
-    v: 1,
-    type: 'lead',
-    action,
-    product: { id: product.id, title: product.title },
-    at: new Date().toISOString()
-  };
-
-  // ВАЖНО ПО БЕЗОПАСНОСТИ:
-  // здесь НЕТ токенов. Отправляем только неперсональные данные.
-  // В боте нужно валидировать tg.initData (HMAC) на бэкенде и уже там обрабатывать lead.
-
-  if (inTelegram) {
-    window.Telegram.WebApp.sendData(JSON.stringify(payload));
-    // Для UX можно подсветить MainButton
-    if (viaMainButton) {
-      tg.HapticFeedback?.impactOccurred?.('light');
-      tg.MainButton.setParams({ text: 'Заявка отправлена ✅' });
-      setTimeout(() => tg.MainButton.setParams({ text: `Отправить заявку: ${product.title}` }), 1500);
-    }
-  } else {
-    // Фолбэк в браузере (для локальной отладки)
-    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
-  }
-}
-
-// ====== СПИСОК ================================================================
-function showList() {
-  detailView.classList.add('hidden');
-  listView.classList.remove('hidden');
-
-  if (inTelegram) {
-    tg.BackButton.hide();
-    tg.MainButton.hide();
-    tg.offEvent?.('mainButtonClicked'); // очистка обработчика на всякий случай
-  }
-}
-
-// ====== РОУТЕР (хэш-маршруты) ===================================================
+// ====== РОУТЕР =================================================================
 function router() {
   const hash = location.hash || '#/';
   if (hash.startsWith('#/product/')) {
@@ -329,50 +245,27 @@ function router() {
   }
 }
 
-// ====== START: чтение стартового параметра ====================================
+// ====== START PARAM ============================================================
 function getStartParam() {
-  // 1) Из Telegram initData (официально)
   const fromInitData = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-
-  // 2) Из URL: Telegram также прокидывает tgWebAppStartParam в GET
-  //    (а для кнопок web_app можно передавать любые свои query-параметры)
   const sp = new URLSearchParams(location.search);
   const fromTgParam = sp.get('tgWebAppStartParam');
-
-  // 3) Фолбэк: собственный короткий параметр ?s=
   const fromCustom = sp.get('s');
-
   return (fromInitData || fromTgParam || fromCustom || '').trim();
 }
-
-// Нормализуем и обрабатываем значение
 function handleStartParam(raw) {
-  if (!raw) return; // ничего не делаем
-
+  if (!raw) return;
   const value = String(raw).toLowerCase();
-
-  // поддержим несколько форматов: "tma", "tg-bot", "tma-chatbot", "product:tma" и т.п.
-  const aliasMap = {
-    'tgbot': 'tg-bot',
-    'tma+chatbot': 'tma-chatbot',
-    'tma_chatbot': 'tma-chatbot'
-  };
-
-  let productId = value;
-  if (value.startsWith('product:')) productId = value.split(':')[1];
-
+  const aliasMap = { 'tgbot': 'tg-bot', 'tma+chatbot': 'tma-chatbot', 'tma_chatbot': 'tma-chatbot' };
+  let productId = value.startsWith('product:') ? value.split(':')[1] : value;
   productId = aliasMap[productId] || productId;
-
-  const known = ['tma', 'tg-bot', 'tma-chatbot'];
-  if (known.includes(productId)) {
-    // Открываем детальную страницу сразу после запуска
+  if (['tma', 'tg-bot', 'tma-chatbot'].includes(productId)) {
     location.hash = `#/product/${productId}`;
   }
 }
-// ====== END: чтение стартового параметра ======================================
 
-
-// Рендер начальных карточек и запуск роутера
+// ====== BOOT ===================================================================
 renderCards();
+handleStartParam(getStartParam());
 window.addEventListener('hashchange', router);
 router();
