@@ -325,6 +325,35 @@ if (consultBtnMain) {
   consultBtnMain.addEventListener('click', () => openConsult(null));
 }
 
+// Отправка консультации
+consultForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const contact = cContact.value.trim();
+  if (!contact) { toast('Укажите контакт'); return; }
+
+  const payload = {
+    v: 1,
+    type: 'lead',
+    action: 'consult',
+    product: consultContext ? { id: consultContext.id, title: consultContext.title } : null,
+    name: cName.value.trim() || null,
+    contact,
+    message: cMsg.value.trim() || null,
+    at: new Date().toISOString()
+  };
+
+  if (inTelegram) {
+    window.Telegram.WebApp.sendData(JSON.stringify(payload));
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+  } else {
+    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
+  }
+
+  closeConsult();
+  toast('Запрос отправлен');
+});
+
+
 // ====== ЭКРАНЫ ================================================================
 function showDetail(productId){
   const p = PRODUCTS.find(x => x.id === productId);
