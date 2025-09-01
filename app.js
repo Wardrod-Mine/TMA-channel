@@ -273,18 +273,31 @@ function switchViews(hideEl, showEl) {
 
 // ====== ОТПРАВКА ==============================================================
 function prepareSend(product, action, viaMainButton = false) {
-  const payload = { v:1, type:'lead', action, product:{ id:product.id, title:product.title }, at:new Date().toISOString() };
+  const payload = {
+    v: 1,
+    type: 'lead',
+    action, // 'send_request'
+    product: { id: product.id, title: product.title },
+    at: new Date().toISOString()
+  };
+
+  console.log('[sendData] payload:', payload); // <-- видно в DevTools
+
   if (inTelegram) {
-    tg.sendData ? tg.sendData(JSON.stringify(payload)) : window.Telegram.WebApp.sendData(JSON.stringify(payload));
+    const tgwa = window.Telegram?.WebApp;
+    if (tg?.sendData) tg.sendData(JSON.stringify(payload));
+    else if (tgwa?.sendData) tgwa.sendData(JSON.stringify(payload));
+
     if (viaMainButton) {
       tg.HapticFeedback?.impactOccurred?.('light');
-      tg.MainButton.setParams({ text:'Заявка отправлена ✅' });
-      setTimeout(()=> tg.MainButton.setParams({ text:`Отправить заявку: ${product.title}` }),1500);
+      tg.MainButton.setParams({ text: 'Заявка отправлена ✅' });
+      setTimeout(() => tg.MainButton.setParams({ text: `Отправить заявку: ${product.title}` }), 1500);
     }
   } else {
-    alert('Demo sendData:\n'+JSON.stringify(payload,null,2));
+    alert('Demo sendData:\\n' + JSON.stringify(payload, null, 2));
   }
 }
+
 
 // Корзина
 function addToCart(product){
@@ -370,19 +383,20 @@ function showDetail(productId){
   detailLong.innerHTML = '';
   (p.long||[]).forEach(par => { const el=document.createElement('p'); el.textContent=par; detailLong.appendChild(el); });
 
+  // кнопки
   backBtn.classList.remove('hidden');
+
+  if (consultBtn) consultBtn.onclick = () => openConsult(p);
 
   // Оставляем только «Отправить заявку»
   buyBtn.textContent = 'Отправить заявку';
-  buyBtn.onclick = () => openRequest(p);
+  buyBtn.onclick = () => prepareSend(p, 'send_request', false);
 
   switchViews(listView, detailView);
 
   if (inTelegram) {
-    tg.MainButton.setParams({ text:`Отправить заявку: ${p.title}` });
-    tg.MainButton.show();
+    tg.MainButton.hide();
     tg.offEvent?.('mainButtonClicked');
-    tg.onEvent('mainButtonClicked', () => openRequest(p));
   }
 }
 
