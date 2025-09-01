@@ -281,22 +281,34 @@ function prepareSend(product, action, viaMainButton = false) {
     at: new Date().toISOString()
   };
 
-  console.log('[sendData] payload:', payload); // <-- видно в DevTools
+  console.log('[buyBtn] click. payload ->', payload);
 
-  if (inTelegram) {
+  if (!inTelegram) {
+    alert('Откройте через Telegram, чтобы отправить заявку.\n\n' + JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  try {
     const tgwa = window.Telegram?.WebApp;
     if (tg?.sendData) tg.sendData(JSON.stringify(payload));
     else if (tgwa?.sendData) tgwa.sendData(JSON.stringify(payload));
+    else throw new Error('Telegram.WebApp.sendData недоступен');
 
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+    toast('Заявка отправлена');
     if (viaMainButton) {
-      tg.HapticFeedback?.impactOccurred?.('light');
       tg.MainButton.setParams({ text: 'Заявка отправлена ✅' });
       setTimeout(() => tg.MainButton.setParams({ text: `Отправить заявку: ${product.title}` }), 1500);
     }
-  } else {
-    alert('Demo sendData:\\n' + JSON.stringify(payload, null, 2));
+  } catch (err) {
+    console.error('[sendData] error:', err);
+    tg?.HapticFeedback?.notificationOccurred?.('error');
+    // системное окно Telegram (если доступно)
+    try { window.Telegram?.WebApp?.showAlert?.('Ошибка отправки: ' + err.message); } catch {}
+    toast('Ошибка отправки: ' + (err?.message || 'неизвестно'));
   }
 }
+
 
 
 // Корзина
@@ -387,6 +399,12 @@ function showDetail(productId){
   backBtn.classList.remove('hidden');
 
   if (consultBtn) consultBtn.onclick = () => openConsult(p);
+  
+  buyBtn.replaceWith(buyBtn.cloneNode(true));
+  const freshBuyBtn = $('#buyBtn');
+  freshBuyBtn.textContent = 'Отправить заявку';
+  freshBuyBtn.addEventListener('click', () => prepareSend(p, 'send_request', false));
+
 
   // Оставляем только «Отправить заявку»
   buyBtn.textContent = 'Отправить заявку';
