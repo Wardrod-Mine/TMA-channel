@@ -35,8 +35,15 @@
     @keyframes fadeOut { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(4px)} }
     .card-appear { opacity:0; transform:translateY(8px); animation:cardIn .35s ease-out forwards; animation-delay:var(--delay,0ms);}
     @keyframes cardIn { to{opacity:1; transform:none;} }
+    .modal{ opacity:0; pointer-events:none; transition: opacity .2s ease; }
+    .modal.show{ opacity:1; pointer-events:auto; }
+    .modal-backdrop{ background:rgba(0,0,0,.5); opacity:.001; transition:opacity .2s ease; }
+    .modal.show .modal-backdrop{ opacity:1; }
+    .modal-panel{ transform:translateY(6px); opacity:0; transition:transform .2s ease, opacity .2s ease; }
+    .modal.show .modal-panel{ transform:translateY(0); opacity:1; }
   </style>
 </head>
+
 <body class="surface min-h-screen">
   <!-- Header -->
   <header class="px-4 py-3 border-b" style="border-color:var(--sep)">
@@ -52,9 +59,15 @@
 
   <!-- List view -->
   <main id="listView" class="max-w-5xl mx-auto p-4 fade-in">
-    <p class="text-sm muted mb-3">Выберите продукт: клик по картинке открывает подробности.</p>
+    <div class="flex flex-wrap items-center gap-3 mb-3">
+      <p class="text-sm muted">Выберите продукт: клик по картинке открывает подробности.</p>
+      <button id="consultBtnMain" class="btn rounded-lg px-4 py-2 text-sm ml-auto">
+        Получить консультацию
+      </button>
+    </div>
     <section id="cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></section>
   </main>
+
 
   <!-- Detail view -->
   <main id="detailView" class="max-w-3xl mx-auto p-4 hidden fade-in">
@@ -69,18 +82,17 @@
         <div id="detailBullets" class="space-y-2"></div>
         <div id="detailLong" class="text-sm leading-relaxed space-y-2"></div>
         <div class="pt-2 flex flex-wrap gap-2">
-          <button id="consultBtn" class="btn rounded-lg px-4 py-2 text-sm">Получить консультацию</button>
-          <button id="buyBtn" class="rounded-lg px-4 py-2 text-sm border" style="border-color:var(--sep)">Добавить в заявку</button>
+          <button id="buyBtn" class="btn rounded-lg px-4 py-2 text-sm">Отправить заявку</button>
         </div>
-        <p class="text-xs muted">Нажмите основную кнопку Telegram снизу, чтобы отправить заявку боту.</p>
+        <p class="text-xs muted">Нажмите основную кнопку Telegram снизу или «Отправить заявку», чтобы заполнить форму и отправить боту.</p>
       </div>
     </article>
   </main>
 
   <!-- Modal: Консультация -->
-  <div id="consultModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0" style="background:rgba(0,0,0,.5)"></div>
-    <div class="relative max-w-md mx-auto mt-16 card rounded-xl overflow-hidden">
+  <div id="consultModal" class="modal fixed inset-0 z-50 hidden">
+    <div class="modal-backdrop absolute inset-0"></div>
+    <div class="modal-panel relative max-w-md mx-auto mt-16 card rounded-xl overflow-hidden">
       <div class="p-4 border-b" style="border-color:var(--sep)">
         <h3 class="text-lg font-semibold">Запрос консультации</h3>
         <p class="text-xs muted" id="consultProductTitle"></p>
@@ -110,10 +122,51 @@
     </div>
   </div>
 
+  <!-- Modal: Заявка -->
+  <div id="requestModal" class="modal fixed inset-0 z-50 hidden">
+    <div class="modal-backdrop absolute inset-0"></div>
+    <div class="modal-panel relative max-w-md mx-auto mt-16 card rounded-xl overflow-hidden">
+      <div class="p-4 border-b" style="border-color:var(--sep)">
+        <h3 class="text-lg font-semibold">Отправить заявку</h3>
+        <p class="text-xs muted" id="requestProductTitle"></p>
+      </div>
+      <form id="requestForm" class="p-4 space-y-3">
+        <label class="block text-sm">
+          <span class="muted">Номер телефона *</span>
+          <input id="rPhone" type="tel" required class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
+                style="border-color:var(--sep)"
+                placeholder="+79991234567"
+                pattern="^[+0-9\s\-\(\)]{6,}$" />
+        </label>
+
+        <label class="flex items-center gap-2 text-sm">
+          <input id="rUseUsername" type="checkbox" class="rounded" checked />
+          <span>Оставить @username</span>
+          <span id="rUsernamePreview" class="muted"></span>
+        </label>
+
+        <label class="block text-sm">
+          <span class="muted">Имя</span>
+          <input id="rName" type="text" class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
+                style="border-color:var(--sep)" autocomplete="name" />
+        </label>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" id="requestCancel" class="rounded-lg px-4 py-2 text-sm border" style="border-color:var(--sep)">Отмена</button>
+          <button type="submit" id="requestSubmit" class="btn rounded-lg px-4 py-2 text-sm">Отправить</button>
+        </div>
+        <p class="text-xs muted">Данные отправятся боту через безопасный <code>sendData</code>.</p>
+      </form>
+    </div>
+  </div>
+
+
   <!-- Toast -->
   <div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-4 px-4 py-2 rounded-lg card text-sm hidden"></div>
 
   <!-- один скрипт, с версией для кэш-бастинга -->
-  <script type="module" src="./app.js?v=5"></script>
+  <script type="module" src="./app.js?v=6"></script>
 </body>
+
+
 </html>

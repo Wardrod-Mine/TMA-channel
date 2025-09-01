@@ -30,6 +30,89 @@ const cMsg = $('#cMsg');
 const tg = window.Telegram?.WebApp;
 const inTelegram = Boolean(tg && typeof tg.initData !== 'undefined');
 
+// Новая модалка заявки
+const requestModal = $('#requestModal');
+const requestForm = $('#requestForm');
+const requestCancel = $('#requestCancel');
+const requestProductTitle = $('#requestProductTitle');
+const rPhone = $('#rPhone');
+const rName = $('#rName');
+const rUseUsername = $('#rUseUsername');
+const rUsernamePreview = $('#rUsernamePreview');
+
+// Кнопка консультации на главном экране
+const consultBtnMain = $('#consultBtnMain');
+
+// Утилиты для плавных модалок
+function modalShow(el){
+  el.classList.remove('hidden');
+  requestAnimationFrame(()=> el.classList.add('show'));
+}
+function modalHide(el){
+  el.classList.remove('show');
+  setTimeout(()=> el.classList.add('hidden'), 200);
+}
+
+let requestContext = null; // продукт, из которого открыли заявку
+
+function openRequest(product){
+  requestContext = product || null;
+  requestProductTitle.textContent = product ? product.title : '';
+  // Превью username из Telegram, если есть
+  const uname = tg?.initDataUnsafe?.user?.username;
+  rUsernamePreview.textContent = uname ? `(@${uname})` : '(в Telegram не найден)';
+  rUseUsername.disabled = !uname;
+  rUseUsername.checked = !!uname;
+
+  // Автозаполнение имени из Telegram, если пусто
+  const tUser = tg?.initDataUnsafe?.user;
+  if (tUser && !rName.value.trim()) {
+    rName.value = [tUser.first_name, tUser.last_name].filter(Boolean).join(' ');
+  }
+
+  // Очистка телефона
+  rPhone.value = '';
+  modalShow(requestModal);
+}
+
+function closeRequest(){
+  modalHide(requestModal);
+  requestContext = null;
+}
+
+requestCancel.addEventListener('click', closeRequest);
+// Закрытие по клику на фон
+requestModal.addEventListener('click', (e)=>{
+  if (e.target === requestModal) closeRequest();
+});
+
+requestForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const phone = rPhone.value.trim();
+  if (!phone) return toast('Укажите номер телефона');
+
+  const includeUsername = !!rUseUsername.checked && !!(tg?.initDataUnsafe?.user?.username);
+  const payload = {
+    v: 1, type: 'lead', action: 'send_request_form',
+    product: requestContext ? { id: requestContext.id, title: requestContext.title } : null,
+    phone,
+    name: rName.value.trim() || null,
+    include_username: includeUsername,
+    username: includeUsername ? tg.initDataUnsafe.user.username : null,
+    at: new Date().toISOString()
+  };
+
+  if (inTelegram) {
+    window.Telegram.WebApp.sendData(JSON.stringify(payload));
+    tg.HapticFeedback?.notificationOccurred?.('success');
+  } else {
+    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
+  }
+
+  closeRequest();
+  toast('Заявка отправлена');
+});
+
 if (inTelegram) {
   tg.ready();
   tg.expand();
@@ -224,24 +307,23 @@ cartBtn.addEventListener('click', ()=>{ if (CART.items.length) sendCart(); });
 // Консультация
 let consultContext = null;
 function openConsult(product){
-  consultContext = product;
-  consultProductTitle.textContent = product.title;
+  consultContext = product || null;
+  consultProductTitle.textContent = product ? product.title : 'Общая консультация';
   cName.value = ''; cContact.value = ''; cMsg.value = '';
-  consultModal.classList.remove('hidden');
+  modalShow(consultModal);
 }
-function closeConsult(){ consultModal.classList.add('hidden'); consultContext = null; }
+function closeConsult(){ modalHide(consultModal); consultContext = null; }
+
 consultCancel.addEventListener('click', closeConsult);
-consultForm.addEventListener('submit', (e)=>{
-  e.preventDefault();
-  const contact = cContact.value.trim(); if (!contact) return toast('Укажите контакт');
-  const payload = { v:1, type:'lead', action:'consult',
-    product: consultContext ? { id:consultContext.id, title:consultContext.title } : null,
-    name: cName.value.trim() || null, contact, message: cMsg.value.trim() || null, at:new Date().toISOString()
-  };
-  if (inTelegram) { window.Telegram.WebApp.sendData(JSON.stringify(payload)); tg.HapticFeedback?.notificationOccurred?.('success'); }
-  else alert('Demo sendData:\n'+JSON.stringify(payload,null,2));
-  closeConsult(); toast('Запрос отправлен');
+// Клик по фону — закрыть
+consultModal.addEventListener('click', (e)=>{
+  if (e.target === consultModal) closeConsult();
 });
+
+// Кнопка на главном экране
+if (consultBtnMain) {
+  consultBtnMain.addEventListener('click', () => openConsult(null));
+}
 
 // ====== ЭКРАНЫ ================================================================
 function showDetail(productId){
@@ -260,25 +342,29 @@ function showDetail(productId){
   (p.long||[]).forEach(par => { const el=document.createElement('p'); el.textContent=par; detailLong.appendChild(el); });
 
   backBtn.classList.remove('hidden');
-  consultBtn.onclick = () => openConsult(p);
-  buyBtn.onclick = () => addToCart(p);
+
+  // Оставляем только «Отправить заявку»
+  buyBtn.textContent = 'Отправить заявку';
+  buyBtn.onclick = () => openRequest(p);
 
   switchViews(listView, detailView);
 
   if (inTelegram) {
-    if (CART.items.length === 0) {
-      tg.MainButton.setParams({ text:`Отправить заявку: ${p.title}` });
-      tg.MainButton.show();
-      tg.offEvent?.('mainButtonClicked');
-      tg.onEvent('mainButtonClicked', () => prepareSend(p,'send_request',true));
-    } else updateCartUI();
+    tg.MainButton.setParams({ text:`Отправить заявку: ${p.title}` });
+    tg.MainButton.show();
+    tg.offEvent?.('mainButtonClicked');
+    tg.onEvent('mainButtonClicked', () => openRequest(p));
   }
 }
 
 function showList(){
   backBtn.classList.add('hidden');
   switchViews(detailView, listView);
-  if (inTelegram) { tg.BackButton.hide(); tg.MainButton.hide(); tg.offEvent?.('mainButtonClicked'); }
+  if (inTelegram) {
+    tg.BackButton.hide();
+    tg.MainButton.hide();
+    tg.offEvent?.('mainButtonClicked');
+  }
   updateCartUI();
 }
 
