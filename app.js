@@ -65,25 +65,22 @@ function modalHide(el){
 function openRequest(product){
   requestContext = product || null;
 
-  // заголовок в модалке (если элемент есть в DOM)
   if (requestProductTitle) {
     requestProductTitle.textContent = product ? product.title : '';
   }
 
-  // автозаполнение имени из Telegram (если поле есть)
   const tUser = tg?.initDataUnsafe?.user;
   if (tUser && rName && !rName.value.trim()) {
     rName.value = [tUser.first_name, tUser.last_name].filter(Boolean).join(' ');
   }
 
-  // поля формы по умолчанию
-  if (rPhone)    rPhone.value = '';
+  if (rPhone) rPhone.value = '';
   if (rCity && !rCity.value) rCity.value = 'Санкт-Петербург';
-  if (rComment)  rComment.value = '';
+  if (rComment) rComment.value = '';
 
-  // показать модалку с анимацией
   if (requestModal) modalShow(requestModal);
 }
+
 
 
 requestCancel.addEventListener('click', closeRequest);
