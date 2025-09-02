@@ -64,23 +64,27 @@ function modalHide(el){
 
 function openRequest(product){
   requestContext = product || null;
-  requestProductTitle.textContent = product ? product.title : '';
-  // Превью username из Telegram, если есть
-  const uname = tg?.initDataUnsafe?.user?.username;
-  rUsernamePreview.textContent = uname ? `(@${uname})` : '(в Telegram не найден)';
-  rUseUsername.disabled = !uname;
-  rUseUsername.checked = !!uname;
 
-  // Автозаполнение имени из Telegram, если пусто
+  // заголовок в модалке (если элемент есть в DOM)
+  if (requestProductTitle) {
+    requestProductTitle.textContent = product ? product.title : '';
+  }
+
+  // автозаполнение имени из Telegram (если поле есть)
   const tUser = tg?.initDataUnsafe?.user;
-  if (tUser && !rName.value.trim()) {
+  if (tUser && rName && !rName.value.trim()) {
     rName.value = [tUser.first_name, tUser.last_name].filter(Boolean).join(' ');
   }
 
-  // Очистка телефона
-  rPhone.value = '';
-  modalShow(requestModal);
+  // поля формы по умолчанию
+  if (rPhone)    rPhone.value = '';
+  if (rCity && !rCity.value) rCity.value = 'Санкт-Петербург';
+  if (rComment)  rComment.value = '';
+
+  // показать модалку с анимацией
+  if (requestModal) modalShow(requestModal);
 }
+
 
 requestCancel.addEventListener('click', closeRequest);
 // Закрытие по клику на фон
@@ -93,44 +97,41 @@ requestForm.addEventListener('submit', (e) => {
 
   const name  = rName?.value?.trim()  || '';
   const phone = rPhone?.value?.trim() || '';
-  const city  = rCity?.value?.trim()  || '';
-  const comment = rComment?.value?.trim() || '';
+  const city  = (window.rCity?.value || '').trim();
+  const comment = (window.rComment?.value || '').trim();
 
+  // простая валидация «как в примере»
   const okName  = name.length >= 2;
   const okPhone = /^[+0-9()\-\s]{6,}$/.test(phone);
   if (!okName || !okPhone) { toast('Заполните имя и корректный телефон'); return; }
 
-  // Приводим к payload из примера: type:"lead", без action, с полями name/phone/city/comment
+  // берём название услуги из карточки (если есть)
+  const serviceTitle = requestContext ? requestContext.title : 'Заявка';
+
   const payload = {
     type: 'lead',
     ts: Date.now(),
-    // каталожных полей у нас нет — подставим, что знаем
     category: null,
     brand: null,
     model: null,
-    service: requestContext ? requestContext.title : 'Заявка',
+    service: serviceTitle,
     price_from: null,
     name, phone, city, comment,
     from: tg?.initDataUnsafe?.user || null
   };
 
-  if (inTelegram) {
-    try {
-      window.Telegram.WebApp.sendData(JSON.stringify(payload)); // ➊ в бота (как в примере)
-      tg?.HapticFeedback?.notificationOccurred?.('success');
-      toast('Заявка отправлена');
-    } catch (err) {
-      console.error(err);
-      tg?.HapticFeedback?.notificationOccurred?.('error');
-      tg?.showAlert?.('Не удалось отправить заявку');
-      return;
-    }
-  } else {
-    alert('Demo sendData:\\n' + JSON.stringify(payload, null, 2));
+  try {
+    window.Telegram?.WebApp?.sendData?.(JSON.stringify(payload)); // как в DEN-TMA
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+    toast('Заявка отправлена');
+    closeRequest();
+  } catch (err) {
+    console.error('sendData error', err);
+    tg?.HapticFeedback?.notificationOccurred?.('error');
+    tg?.showAlert?.('Не удалось отправить заявку');
   }
-
-  closeRequest();
 });
+
 
 if (inTelegram) {
   tg.ready();
@@ -357,43 +358,6 @@ function openConsult(product){
   modalShow(consultModal);
 }
 function closeConsult(){ modalHide(consultModal); consultContext = null; }
-
-
-
-requestCancel?.addEventListener('click', closeRequest);
-// клик по фону закрывает окно
-requestModal?.addEventListener('click', (e)=>{ if (e.target === requestModal) closeRequest(); });
-
-requestForm?.addEventListener('submit', (e)=>{
-  e.preventDefault();
-  const phone = rPhone?.value?.trim();
-  if (!phone) { toast('Укажите номер телефона'); return; }
-
-  const tgwa = window.Telegram?.WebApp;
-  const includeUsername = !!rUseUsername?.checked && !!tgwa?.initDataUnsafe?.user?.username;
-
-  const payload = {
-    v: 1,
-    type: 'lead',
-    action: 'send_request_form',
-    product: requestContext ? { id: requestContext.id, title: requestContext.title } : null,
-    phone,
-    name: rName?.value?.trim() || null,
-    include_username: includeUsername,
-    username: includeUsername ? tgwa.initDataUnsafe.user.username : null,
-    at: new Date().toISOString()
-  };
-
-  if (inTelegram) {
-    tgwa.sendData(JSON.stringify(payload));
-    tg?.HapticFeedback?.notificationOccurred?.('success');
-  } else {
-    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
-  }
-
-  closeRequest();
-  toast('Заявка отправлена');
-});
 
 consultCancel.addEventListener('click', closeConsult);
 // Клик по фону — закрыть
