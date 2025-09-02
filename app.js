@@ -43,6 +43,13 @@ const rUsernamePreview = $('#rUsernamePreview');
 // Кнопка консультации на главном экране
 const consultBtnMain = $('#consultBtnMain');
 
+let requestContext = null;
+
+function closeRequest(){
+  requestModal?.classList.add('hidden');
+  requestContext = null;
+}
+
 // Утилиты для плавных модалок
 function modalShow(el){
   el.classList.remove('hidden');
@@ -53,9 +60,24 @@ function modalHide(el){
   setTimeout(()=> el.classList.add('hidden'), 200);
 }
 
-function closeRequest(){
-  modalHide(requestModal);
-  requestContext = null;
+function openRequest(product){
+  requestContext = product || null;
+  requestProductTitle.textContent = product ? product.title : '';
+  // Превью username из Telegram, если есть
+  const uname = tg?.initDataUnsafe?.user?.username;
+  rUsernamePreview.textContent = uname ? `(@${uname})` : '(в Telegram не найден)';
+  rUseUsername.disabled = !uname;
+  rUseUsername.checked = !!uname;
+
+  // Автозаполнение имени из Telegram, если пусто
+  const tUser = tg?.initDataUnsafe?.user;
+  if (tUser && !rName.value.trim()) {
+    rName.value = [tUser.first_name, tUser.last_name].filter(Boolean).join(' ');
+  }
+
+  // Очистка телефона
+  rPhone.value = '';
+  modalShow(requestModal);
 }
 
 requestCancel.addEventListener('click', closeRequest);
@@ -317,34 +339,7 @@ function openConsult(product){
 }
 function closeConsult(){ modalHide(consultModal); consultContext = null; }
 
-// ====== ЗАЯВКА (форма) =======================================================
-let requestContext = null;
 
-function openRequest(product){
-  requestContext = product || null;
-  if (requestProductTitle) requestProductTitle.textContent = product ? product.title : '';
-
-  const tgwa = window.Telegram?.WebApp;
-  const tUser = tgwa?.initDataUnsafe?.user;
-
-  // username
-  const uname = tUser?.username;
-  if (rUsernamePreview) rUsernamePreview.textContent = uname ? `(@${uname})` : '(username не найден)';
-  if (rUseUsername) { rUseUsername.disabled = !uname; rUseUsername.checked = !!uname; }
-
-  // имя по умолчанию из профиля
-  if (tUser && rName && !rName.value) {
-    rName.value = [tUser.first_name, tUser.last_name].filter(Boolean).join(' ');
-  }
-
-  if (rPhone) rPhone.value = '';
-  requestModal?.classList.remove('hidden');
-}
-
-function closeRequest(){
-  requestModal?.classList.add('hidden');
-  requestContext = null;
-}
 
 requestCancel?.addEventListener('click', closeRequest);
 // клик по фону закрывает окно
