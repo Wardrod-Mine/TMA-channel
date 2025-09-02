@@ -53,8 +53,6 @@ function modalHide(el){
   setTimeout(()=> el.classList.add('hidden'), 200);
 }
 
-let requestContext = null; // продукт, из которого открыли заявку
-
 function openRequest(product){
   requestContext = product || null;
   requestProductTitle.textContent = product ? product.title : '';
@@ -339,6 +337,70 @@ function openConsult(product){
 }
 function closeConsult(){ modalHide(consultModal); consultContext = null; }
 
+// ====== ЗАЯВКА (форма) =======================================================
+let requestContext = null;
+
+function openRequest(product){
+  requestContext = product || null;
+  if (requestProductTitle) requestProductTitle.textContent = product ? product.title : '';
+
+  const tgwa = window.Telegram?.WebApp;
+  const tUser = tgwa?.initDataUnsafe?.user;
+
+  // username
+  const uname = tUser?.username;
+  if (rUsernamePreview) rUsernamePreview.textContent = uname ? `(@${uname})` : '(username не найден)';
+  if (rUseUsername) { rUseUsername.disabled = !uname; rUseUsername.checked = !!uname; }
+
+  // имя по умолчанию из профиля
+  if (tUser && rName && !rName.value) {
+    rName.value = [tUser.first_name, tUser.last_name].filter(Boolean).join(' ');
+  }
+
+  if (rPhone) rPhone.value = '';
+  requestModal?.classList.remove('hidden');
+}
+
+function closeRequest(){
+  requestModal?.classList.add('hidden');
+  requestContext = null;
+}
+
+requestCancel?.addEventListener('click', closeRequest);
+// клик по фону закрывает окно
+requestModal?.addEventListener('click', (e)=>{ if (e.target === requestModal) closeRequest(); });
+
+requestForm?.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const phone = rPhone?.value?.trim();
+  if (!phone) { toast('Укажите номер телефона'); return; }
+
+  const tgwa = window.Telegram?.WebApp;
+  const includeUsername = !!rUseUsername?.checked && !!tgwa?.initDataUnsafe?.user?.username;
+
+  const payload = {
+    v: 1,
+    type: 'lead',
+    action: 'send_request_form',
+    product: requestContext ? { id: requestContext.id, title: requestContext.title } : null,
+    phone,
+    name: rName?.value?.trim() || null,
+    include_username: includeUsername,
+    username: includeUsername ? tgwa.initDataUnsafe.user.username : null,
+    at: new Date().toISOString()
+  };
+
+  if (inTelegram) {
+    tgwa.sendData(JSON.stringify(payload));
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+  } else {
+    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
+  }
+
+  closeRequest();
+  toast('Заявка отправлена');
+});
+
 consultCancel.addEventListener('click', closeConsult);
 // Клик по фону — закрыть
 consultModal.addEventListener('click', (e)=>{
@@ -399,10 +461,11 @@ function showDetail(productId){
   backBtn.classList.remove('hidden');
 
   if (consultBtn) consultBtn.onclick = () => openConsult(p);
-  
+
   // Оставляем только «Отправить заявку»
   buyBtn.textContent = 'Отправить заявку';
-  buyBtn.onclick = () => prepareSend(p, 'send_request', false);
+  buyBtn.onclick = () => openRequest(p);
+
 
   switchViews(listView, detailView);
 
