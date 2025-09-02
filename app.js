@@ -400,12 +400,6 @@ function showDetail(productId){
 
   if (consultBtn) consultBtn.onclick = () => openConsult(p);
   
-  buyBtn.replaceWith(buyBtn.cloneNode(true));
-  const freshBuyBtn = $('#buyBtn');
-  freshBuyBtn.textContent = 'Отправить заявку';
-  freshBuyBtn.addEventListener('click', () => prepareSend(p, 'send_request', false));
-
-
   // Оставляем только «Отправить заявку»
   buyBtn.textContent = 'Отправить заявку';
   buyBtn.onclick = () => prepareSend(p, 'send_request', false);
