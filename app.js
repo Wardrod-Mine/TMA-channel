@@ -53,26 +53,6 @@ function modalHide(el){
   setTimeout(()=> el.classList.add('hidden'), 200);
 }
 
-function openRequest(product){
-  requestContext = product || null;
-  requestProductTitle.textContent = product ? product.title : '';
-  // Превью username из Telegram, если есть
-  const uname = tg?.initDataUnsafe?.user?.username;
-  rUsernamePreview.textContent = uname ? `(@${uname})` : '(в Telegram не найден)';
-  rUseUsername.disabled = !uname;
-  rUseUsername.checked = !!uname;
-
-  // Автозаполнение имени из Telegram, если пусто
-  const tUser = tg?.initDataUnsafe?.user;
-  if (tUser && !rName.value.trim()) {
-    rName.value = [tUser.first_name, tUser.last_name].filter(Boolean).join(' ');
-  }
-
-  // Очистка телефона
-  rPhone.value = '';
-  modalShow(requestModal);
-}
-
 function closeRequest(){
   modalHide(requestModal);
   requestContext = null;
