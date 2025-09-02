@@ -39,6 +39,8 @@ const rPhone = $('#rPhone');
 const rName = $('#rName');
 const rUseUsername = $('#rUseUsername');
 const rUsernamePreview = $('#rUsernamePreview');
+const rCity = $('#rCity');
+const rComment = $('#rComment');
 
 // Кнопка консультации на главном экране
 const consultBtnMain = $('#consultBtnMain');
@@ -86,31 +88,48 @@ requestModal.addEventListener('click', (e)=>{
   if (e.target === requestModal) closeRequest();
 });
 
-requestForm.addEventListener('submit', (e)=>{
+requestForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const phone = rPhone.value.trim();
-  if (!phone) return toast('Укажите номер телефона');
 
-  const includeUsername = !!rUseUsername.checked && !!(tg?.initDataUnsafe?.user?.username);
+  const name  = rName?.value?.trim()  || '';
+  const phone = rPhone?.value?.trim() || '';
+  const city  = rCity?.value?.trim()  || '';
+  const comment = rComment?.value?.trim() || '';
+
+  const okName  = name.length >= 2;
+  const okPhone = /^[+0-9()\-\s]{6,}$/.test(phone);
+  if (!okName || !okPhone) { toast('Заполните имя и корректный телефон'); return; }
+
+  // Приводим к payload из примера: type:"lead", без action, с полями name/phone/city/comment
   const payload = {
-    v: 1, type: 'lead', action: 'send_request_form',
-    product: requestContext ? { id: requestContext.id, title: requestContext.title } : null,
-    phone,
-    name: rName.value.trim() || null,
-    include_username: includeUsername,
-    username: includeUsername ? tg.initDataUnsafe.user.username : null,
-    at: new Date().toISOString()
+    type: 'lead',
+    ts: Date.now(),
+    // каталожных полей у нас нет — подставим, что знаем
+    category: null,
+    brand: null,
+    model: null,
+    service: requestContext ? requestContext.title : 'Заявка',
+    price_from: null,
+    name, phone, city, comment,
+    from: tg?.initDataUnsafe?.user || null
   };
 
   if (inTelegram) {
-    window.Telegram.WebApp.sendData(JSON.stringify(payload));
-    tg.HapticFeedback?.notificationOccurred?.('success');
+    try {
+      window.Telegram.WebApp.sendData(JSON.stringify(payload)); // ➊ в бота (как в примере)
+      tg?.HapticFeedback?.notificationOccurred?.('success');
+      toast('Заявка отправлена');
+    } catch (err) {
+      console.error(err);
+      tg?.HapticFeedback?.notificationOccurred?.('error');
+      tg?.showAlert?.('Не удалось отправить заявку');
+      return;
+    }
   } else {
-    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
+    alert('Demo sendData:\\n' + JSON.stringify(payload, null, 2));
   }
 
   closeRequest();
-  toast('Заявка отправлена');
 });
 
 if (inTelegram) {

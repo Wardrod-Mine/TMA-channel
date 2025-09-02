@@ -130,33 +130,41 @@
         <h3 class="text-lg font-semibold">Отправить заявку</h3>
         <p class="text-xs muted" id="requestProductTitle"></p>
       </div>
-      <form id="requestForm" class="p-4 space-y-3">
-        <label class="block text-sm">
-          <span class="muted">Номер телефона *</span>
-          <input id="rPhone" type="tel" required class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
-                style="border-color:var(--sep)"
-                placeholder="+79991234567"
-                pattern="^[+0-9\s\-\(\)]{6,}$" />
-        </label>
+        <form id="requestForm" class="p-4 space-y-3">
+          <label class="block text-sm">
+            <span class="muted">Имя *</span>
+            <input id="rName" type="text" required
+              class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
+              style="border-color:var(--sep)" placeholder="Ваше имя">
+          </label>
 
-        <label class="flex items-center gap-2 text-sm">
-          <input id="rUseUsername" type="checkbox" class="rounded" checked />
-          <span>Оставить @username</span>
-          <span id="rUsernamePreview" class="muted"></span>
-        </label>
+          <label class="block text-sm">
+            <span class="muted">Телефон *</span>
+            <input id="rPhone" type="tel" required
+              class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
+              style="border-color:var(--sep)"
+              placeholder="+7 999 123-45-67"
+               pattern="^[+0-9()\\-\\s]{6,}$">
+          </label>
 
-        <label class="block text-sm">
-          <span class="muted">Имя</span>
-          <input id="rName" type="text" class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
-                style="border-color:var(--sep)" autocomplete="name" />
-        </label>
 
-        <div class="flex gap-2 pt-2">
-          <button type="button" id="requestCancel" class="rounded-lg px-4 py-2 text-sm border" style="border-color:var(--sep)">Отмена</button>
-          <button type="submit" id="requestSubmit" class="btn rounded-lg px-4 py-2 text-sm">Отправить</button>
-        </div>
-        <p class="text-xs muted">Данные отправятся боту через безопасный <code>sendData</code>.</p>
-      </form>
+          <label class="block text-sm">
+            <span class="muted">Комментарий</span>
+            <textarea id="rComment" rows="3"
+               class="w-full mt-1 rounded-lg bg-transparent border px-3 py-2"
+               style="border-color:var(--sep)"
+               placeholder="Например: удобное время, нужен выезд"></textarea>
+          </label>
+
+          <div class="flex gap-2 pt-2">
+            <button type="button" id="requestCancel"
+              class="rounded-lg px-4 py-2 text-sm border" style="border-color:var(--sep)">Отмена</button>
+            <button type="submit" id="requestSubmit" class="btn rounded-lg px-4 py-2 text-sm">Отправить</button>
+          </div>
+
+          <p class="text-xs muted">Данные отправятся боту через безопасный <code>sendData</code>.</p>
+        </form>
+
     </div>
   </div>
 
@@ -165,7 +173,7 @@
   <div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-4 px-4 py-2 rounded-lg card text-sm hidden"></div>
 
   <!-- один скрипт, с версией для кэш-бастинга -->
-  <script type="module" src="./app.js?v=7"></script>
+  <script type="module" src="./app.js?v=8"></script>
 </body>
 
 
