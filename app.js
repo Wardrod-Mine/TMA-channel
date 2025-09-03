@@ -107,13 +107,15 @@ requestForm.addEventListener('submit', (e) => {
 
   const payload = {
     type: 'lead',
+    action: 'send_request_form',
     ts: Date.now(),
-    category: null,
-    brand: null,
-    model: null,
     service: serviceTitle,
-    price_from: null,
-    name, phone, city, comment,
+    name,
+    phone,
+    city,
+    comment,
+    include_username: Boolean(tg?.initDataUnsafe?.user?.username),
+    username: tg?.initDataUnsafe?.user?.username || null,
     from: tg?.initDataUnsafe?.user || null
   };
 
