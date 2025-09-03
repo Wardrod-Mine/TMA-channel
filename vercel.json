@@ -1,7 +1,7 @@
 {
   "version": 2,
   "builds": [
-    { "src": "front/index.html", "use": "@vercel/static" },
+    { "src": "tma1/index.html", "use": "@vercel/static" },
     { "src": "tma2/index.html", "use": "@vercel/static" }
   ],
   "routes": [
@@ -9,5 +9,8 @@
     { "src": "/tma1/(.*)", "dest": "/tma1/$1" },
     { "src": "/tma2", "dest": "/tma2/index.html" },
     { "src": "/tma2/(.*)", "dest": "/tma2/$1" }
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/tma1/index.html" }
   ]
 }
