@@ -120,12 +120,19 @@ requestForm.addEventListener('submit', (e) => {
   };
 
   try {
-    window.Telegram?.WebApp?.sendData?.(JSON.stringify(payload)); // как в DEN-TMA
+    if (window.Telegram?.WebApp?.sendData) {
+      console.log('[Request Form] Sending data via sendData...');
+      window.Telegram.WebApp.sendData(JSON.stringify(payload));
+      console.log('[Request Form] sendData called');
+    } else {
+      console.warn('[Request Form] sendData not available');
+    }
+
     tg?.HapticFeedback?.notificationOccurred?.('success');
     toast('Заявка отправлена');
     closeRequest();
   } catch (err) {
-    console.error('sendData error', err);
+    console.error('[Request Form] sendData error:', err);
     tg?.HapticFeedback?.notificationOccurred?.('error');
     tg?.showAlert?.('Не удалось отправить заявку');
   }
@@ -135,7 +142,8 @@ requestForm.addEventListener('submit', (e) => {
 if (inTelegram) {
   tg.ready();
   tg.expand();
-  tg.BackButton.onClick(() => { if (location.hash.startsWith('#/product/')) location.hash = '#/'; });
+  if (tg?.BackButton?.onClick) {
+    tg.BackButton.onClick(() => { if (location.hash.startsWith('#/product/')) location.hash = '#/'; })};
   tg.onEvent('themeChanged', applyThemeFromTelegram);
   const username = tg.initDataUnsafe?.user?.username;
   if (username) usernameSlot.textContent = `@${username}`;
