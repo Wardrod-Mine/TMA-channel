@@ -143,6 +143,8 @@ if (inTelegram) {
 }
 
 function sendToBot(payload) {
+  console.log('[sendToBot] canSendData =', Boolean(window.Telegram?.WebApp?.sendData));
+
   try {
     const data = JSON.stringify(payload);
     console.log('[sendToBot] payload:', data);
