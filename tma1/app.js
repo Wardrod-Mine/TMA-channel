@@ -315,6 +315,7 @@ function prepareSend(product, action, viaMainButton = false) {
     type: 'lead',
     action,
     product: { id: product.id, title: product.title },
+    selected: product.title,   // 🆕 сюда пишем, что выбрал клиент
     at: new Date().toISOString()
   };
 
@@ -332,11 +333,9 @@ function prepareSend(product, action, viaMainButton = false) {
       tg.MainButton.setParams({ text: 'Заявка отправлена ✅' });
       setTimeout(() => tg.MainButton.setParams({ text: `Отправить заявку: ${product.title}` }), 1500);
     }
-  } 
-  catch (err) {
+  } catch (err) {
     console.error('[sendData] error:', err);
     tg?.HapticFeedback?.notificationOccurred?.('error');
-    try { window.Telegram?.WebApp?.showAlert?.('Ошибка отправки: ' + err.message); } catch {}
     toast('Ошибка отправки: ' + (err?.message || 'неизвестно'));
   }
 }
