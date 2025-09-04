@@ -10,7 +10,7 @@ const detailShort = $('#detailShort');
 const detailBullets = $('#detailBullets');
 const detailLong = $('#detailLong');
 const usernameSlot = $('#usernameSlot');
-const backBtn = $('#backBtn');          // <-- правильное имя
+const backBtn = $('#backBtn');         
 const consultBtn = $('#consultBtn');
 const buyBtn = $('#buyBtn');
 const cartBtn = $('#cartBtn');
@@ -25,12 +25,8 @@ const consultProductTitle = $('#consultProductTitle');
 const cName = $('#cName');
 const cContact = $('#cContact');
 const cMsg = $('#cMsg');
-
-// ====== TELEGRAM WEBAPP =======================================================
 const tg = window.Telegram?.WebApp;
 const inTelegram = Boolean(tg && typeof tg.initData !== 'undefined');
-
-// Новая модалка заявки
 const requestModal = $('#requestModal');
 const requestForm = $('#requestForm');
 const requestCancel = $('#requestCancel');
@@ -41,8 +37,6 @@ const rUseUsername = $('#rUseUsername');
 const rUsernamePreview = $('#rUsernamePreview');
 const rCity = $('#rCity');
 const rComment = $('#rComment');
-
-// Кнопка консультации на главном экране
 const consultBtnMain = $('#consultBtnMain');
 
 let requestContext = null;
@@ -84,7 +78,7 @@ function openRequest(product){
 
 
 requestCancel.addEventListener('click', closeRequest);
-// Закрытие по клику на фон
+
 requestModal.addEventListener('click', (e)=>{
   if (e.target === requestModal) closeRequest();
 });
@@ -96,13 +90,10 @@ requestForm.addEventListener('submit', (e) => {
   const phone = rPhone?.value?.trim() || '';
   const city  = (window.rCity?.value || '').trim();
   const comment = (window.rComment?.value || '').trim();
-
-  // простая валидация «как в примере»
   const okName  = name.length >= 2;
   const okPhone = /^[+0-9()\-\s]{6,}$/.test(phone);
   if (!okName || !okPhone) { toast('Заполните имя и корректный телефон'); return; }
 
-  // берём название услуги из карточки (если есть)
   const serviceTitle = requestContext ? requestContext.title : 'Заявка';
 
   const payload = {
@@ -122,7 +113,7 @@ requestForm.addEventListener('submit', (e) => {
   try {
     if (window.Telegram?.WebApp?.sendData) {
       console.log('[Request Form] Sending data via sendData...');
-      window.Telegram.WebApp.sendData(JSON.stringify(payload));
+      sendToBot(payload);
       console.log('[Request Form] sendData called');
     } else {
       console.warn('[Request Form] sendData not available');
@@ -138,7 +129,6 @@ requestForm.addEventListener('submit', (e) => {
   }
 });
 
-
 if (inTelegram) {
   tg.ready();
   tg.expand();
@@ -150,6 +140,26 @@ if (inTelegram) {
   backBtn.addEventListener('click', () => { if (location.hash.startsWith('#/product/')) location.hash = '#/'; });
 } else {
   usernameSlot.textContent = 'Откройте через Telegram для полного функционала';
+}
+
+function sendToBot(payload) {
+  try {
+    const data = JSON.stringify(payload);
+    console.log('[sendToBot] payload:', data);
+
+    if (window.Telegram?.WebApp?.sendData) {
+      window.Telegram.WebApp.sendData(data);
+      tg?.HapticFeedback?.notificationOccurred?.('success');
+      toast('Заявка отправлена');
+    } else {
+      console.warn('[sendToBot] sendData недоступен');
+      alert('Demo sendData:\n' + data);
+    }
+  } catch (err) {
+    console.error('[sendToBot] error:', err);
+    tg?.HapticFeedback?.notificationOccurred?.('error');
+    toast('Ошибка отправки: ' + (err.message || 'неизвестно'));
+  }
 }
 
 function applyThemeFromTelegram() {
@@ -168,13 +178,13 @@ function applyThemeFromTelegram() {
 }
 applyThemeFromTelegram();
 
-// ====== СОСТОЯНИЕ КОРЗИНЫ/ЗАЯВКИ =============================================
+// ============== СОСТОЯНИЕ КОРЗИНЫ/ЗАЯВКИ ===================
 let CART = loadCart();
 function loadCart(){ try{ return JSON.parse(sessionStorage.getItem('cart') || '{"items":[]}'); }catch(e){ return {items:[]}; } }
 function saveCart(){ sessionStorage.setItem('cart', JSON.stringify(CART)); }
 function inCart(id){ return CART.items.some(x => x.id === id); }
 
-// ====== ДАННЫЕ ТОВАРОВ ========================================================
+// ============ ДАННЫЕ ТОВАРОВ ================
 const PRODUCTS = [
   { id:'tma', title:'Telegram Mini App (ТМА)', img:'https://placehold.co/800x500/png?text=Telegram+Mini+App',
     short:'Готовое мини-приложение в Telegram: быстрый старт, нативные кнопки, светлая/тёмная тема.',
@@ -214,7 +224,7 @@ const PRODUCTS = [
     ]},
 ];
 
-// ====== UI ВСПОМОГАТЕЛЬНЫЕ ====================================================
+// ============= UI ВСПОМОГАТЕЛЬНЫЕ ===============
 function toast(msg){
   toastEl.textContent = msg;
   toastEl.classList.remove('hidden');
@@ -242,7 +252,7 @@ function updateCartUI(){
   }
 }
 
-// ====== КАРТОЧКИ ==============================================================
+// ============ КАРТОЧКИ =================
 function renderCards() {
   cardsRoot.innerHTML = '';
   PRODUCTS.forEach((p, i) => {
@@ -298,12 +308,12 @@ function switchViews(hideEl, showEl) {
   }
 }
 
-// ====== ОТПРАВКА ==============================================================
+// =========== ОТПРАВКА =========================
 function prepareSend(product, action, viaMainButton = false) {
   const payload = {
     v: 1,
     type: 'lead',
-    action, // 'send_request'
+    action,
     product: { id: product.id, title: product.title },
     at: new Date().toISOString()
   };
@@ -316,27 +326,20 @@ function prepareSend(product, action, viaMainButton = false) {
   }
 
   try {
-    const tgwa = window.Telegram?.WebApp;
-    if (tg?.sendData) tg.sendData(JSON.stringify(payload));
-    else if (tgwa?.sendData) tgwa.sendData(JSON.stringify(payload));
-    else throw new Error('Telegram.WebApp.sendData недоступен');
+    sendToBot(payload);
 
-    tg?.HapticFeedback?.notificationOccurred?.('success');
-    toast('Заявка отправлена');
     if (viaMainButton) {
       tg.MainButton.setParams({ text: 'Заявка отправлена ✅' });
       setTimeout(() => tg.MainButton.setParams({ text: `Отправить заявку: ${product.title}` }), 1500);
     }
-  } catch (err) {
+  } 
+  catch (err) {
     console.error('[sendData] error:', err);
     tg?.HapticFeedback?.notificationOccurred?.('error');
-    // системное окно Telegram (если доступно)
     try { window.Telegram?.WebApp?.showAlert?.('Ошибка отправки: ' + err.message); } catch {}
     toast('Ошибка отправки: ' + (err?.message || 'неизвестно'));
   }
 }
-
-
 
 // Корзина
 function addToCart(product){
@@ -348,7 +351,7 @@ function sendCart(){
   if (CART.items.length === 0) return;
   const payload = { v:1, type:'lead', action:'send_cart', items:CART.items, at:new Date().toISOString() };
   if (inTelegram) {
-    window.Telegram.WebApp.sendData(JSON.stringify(payload));
+    sendToBot(payload);
     tg.MainButton.setParams({ text:'Заявка отправлена ✅' });
     setTimeout(()=> updateCartUI(), 1500);
   } else alert('Demo sendData:\n'+JSON.stringify(payload,null,2));
@@ -367,7 +370,6 @@ function openConsult(product){
 function closeConsult(){ modalHide(consultModal); consultContext = null; }
 
 consultCancel.addEventListener('click', closeConsult);
-// Клик по фону — закрыть
 consultModal.addEventListener('click', (e)=>{
   if (e.target === consultModal) closeConsult();
 });
@@ -395,8 +397,7 @@ consultForm.addEventListener('submit', (e) => {
   };
 
   if (inTelegram) {
-    window.Telegram.WebApp.sendData(JSON.stringify(payload));
-    tg?.HapticFeedback?.notificationOccurred?.('success');
+    sendToBot(payload);
   } else {
     alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
   }
@@ -405,8 +406,7 @@ consultForm.addEventListener('submit', (e) => {
   toast('Запрос отправлен');
 });
 
-
-// ====== ЭКРАНЫ ================================================================
+// ======= ЭКРАНЫ ===================
 function showDetail(productId){
   const p = PRODUCTS.find(x => x.id === productId);
   if (!p) return showList();
@@ -422,12 +422,10 @@ function showDetail(productId){
   detailLong.innerHTML = '';
   (p.long||[]).forEach(par => { const el=document.createElement('p'); el.textContent=par; detailLong.appendChild(el); });
 
-  // кнопки
   backBtn.classList.remove('hidden');
 
   if (consultBtn) consultBtn.onclick = () => openConsult(p);
 
-  // Оставляем только «Отправить заявку»
   buyBtn.textContent = 'Отправить заявку';
   buyBtn.onclick = () => openRequest(p);
 
@@ -451,7 +449,7 @@ function showList(){
   updateCartUI();
 }
 
-// ====== РОУТЕР/СТАРТ ==========================================================
+// ========= РОУТЕР/СТАРТ ================
 function router(){
   const hash = location.hash || '#/';
   if (hash.startsWith('#/product/')) showDetail(hash.replace('#/product/',''));
