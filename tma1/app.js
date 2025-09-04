@@ -142,21 +142,19 @@ if (inTelegram) {
   usernameSlot.textContent = 'Откройте через Telegram для полного функционала';
 }
 
-function sendToBot(payload) {
-  console.log('[sendToBot] canSendData =', Boolean(window.Telegram?.WebApp?.sendData));
-
+async function sendToBot(payload) {
   try {
-    const data = JSON.stringify(payload);
-    console.log('[sendToBot] payload:', data);
+    console.log('[sendToBot] payload:', payload);
+    const res = await fetch('/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    console.log('[sendToBot] server response:', data);
 
-    if (window.Telegram?.WebApp?.sendData) {
-      window.Telegram.WebApp.sendData(data);
-      tg?.HapticFeedback?.notificationOccurred?.('success');
-      toast('Заявка отправлена');
-    } else {
-      console.warn('[sendToBot] sendData недоступен');
-      alert('Demo sendData:\n' + data);
-    }
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+    toast('Заявка отправлена');
   } catch (err) {
     console.error('[sendToBot] error:', err);
     tg?.HapticFeedback?.notificationOccurred?.('error');
@@ -239,18 +237,8 @@ function updateCartUI(){
   cartCount.textContent = n;
   if (n>0) {
     cartBtn.classList.remove('hidden');
-    if (inTelegram) {
-      tg.MainButton.setParams({ text: `Отправить заявку (${n})` });
-      tg.MainButton.show();
-      tg.offEvent?.('mainButtonClicked');
-      tg.onEvent('mainButtonClicked', sendCart);
-    }
   } else {
     cartBtn.classList.add('hidden');
-    if (!location.hash.startsWith('#/product/') && inTelegram) {
-      tg.MainButton.hide();
-      tg.offEvent?.('mainButtonClicked');
-    }
   }
 }
 
@@ -330,11 +318,6 @@ function prepareSend(product, action, viaMainButton = false) {
 
   try {
     sendToBot(payload);
-
-    if (viaMainButton) {
-      tg.MainButton.setParams({ text: 'Заявка отправлена ✅' });
-      setTimeout(() => tg.MainButton.setParams({ text: `Отправить заявку: ${product.title}` }), 1500);
-    }
   } catch (err) {
     console.error('[sendData] error:', err);
     tg?.HapticFeedback?.notificationOccurred?.('error');
@@ -353,8 +336,6 @@ function sendCart(){
   const payload = { v:1, type:'lead', action:'send_cart', items:CART.items, at:new Date().toISOString() };
   if (inTelegram) {
     sendToBot(payload);
-    tg.MainButton.setParams({ text:'Заявка отправлена ✅' });
-    setTimeout(()=> updateCartUI(), 1500);
   } else alert('Demo sendData:\n'+JSON.stringify(payload,null,2));
   CART = { items:[] }; saveCart(); updateCartUI();
 }
@@ -432,21 +413,11 @@ function showDetail(productId){
 
 
   switchViews(listView, detailView);
-
-  if (inTelegram) {
-    tg.MainButton.hide();
-    tg.offEvent?.('mainButtonClicked');
-  }
 }
 
 function showList(){
   backBtn.classList.add('hidden');
   switchViews(detailView, listView);
-  if (inTelegram) {
-    tg.BackButton.hide();
-    tg.MainButton.hide();
-    tg.offEvent?.('mainButtonClicked');
-  }
   updateCartUI();
 }
 
