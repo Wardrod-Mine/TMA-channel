@@ -145,12 +145,14 @@ if (inTelegram) {
 async function sendToBot(payload) {
   try {
     console.log('[sendToBot] payload:', payload);
-    const res = await fetch('/lead', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = { ok: false, error: 'empty response' };
+    }
+    console.log('[sendToBot] server response:', data);
+
     console.log('[sendToBot] server response:', data);
 
     tg?.HapticFeedback?.notificationOccurred?.('success');
