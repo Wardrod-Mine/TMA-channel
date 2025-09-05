@@ -111,14 +111,7 @@ requestForm.addEventListener('submit', (e) => {
   };
 
   try {
-    if (window.Telegram?.WebApp?.sendData) {
-      console.log('[Request Form] Sending data via sendData...');
-      sendToBot(payload);
-      console.log('[Request Form] sendData called');
-    } else {
-      console.warn('[Request Form] sendData not available');
-    }
-
+    sendToBot(payload);
     tg?.HapticFeedback?.notificationOccurred?.('success');
     toast('Заявка отправлена');
     closeRequest();
@@ -127,6 +120,7 @@ requestForm.addEventListener('submit', (e) => {
     tg?.HapticFeedback?.notificationOccurred?.('error');
     tg?.showAlert?.('Не удалось отправить заявку');
   }
+
 });
 
 if (inTelegram) {
@@ -145,13 +139,19 @@ if (inTelegram) {
 async function sendToBot(payload) {
   try {
     console.log('[sendToBot] payload:', payload);
+
+    const res = await fetch('/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
     let data = null;
     try {
       data = await res.json();
     } catch {
       data = { ok: false, error: 'empty response' };
     }
-    console.log('[sendToBot] server response:', data);
 
     console.log('[sendToBot] server response:', data);
 
@@ -333,12 +333,19 @@ function addToCart(product){
   CART.items.push({ id: product.id, title: product.title });
   saveCart(); toast('Добавлено в заявку'); tg?.HapticFeedback?.notificationOccurred?.('success'); updateCartUI();
 }
+
 function sendCart(){
   if (CART.items.length === 0) return;
   const payload = { v:1, type:'lead', action:'send_cart', items:CART.items, at:new Date().toISOString() };
-  if (inTelegram) {
+  try {
     sendToBot(payload);
-  } else alert('Demo sendData:\n'+JSON.stringify(payload,null,2));
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+    toast('Заявка отправлена');
+  } catch (err) {
+    console.error('[Request Form] sendData error:', err);
+    tg?.HapticFeedback?.notificationOccurred?.('error');
+    tg?.showAlert?.('Не удалось отправить заявку');
+  }
   CART = { items:[] }; saveCart(); updateCartUI();
 }
 cartBtn.addEventListener('click', ()=>{ if (CART.items.length) sendCart(); });
@@ -380,14 +387,17 @@ consultForm.addEventListener('submit', (e) => {
     at: new Date().toISOString()
   };
 
-  if (inTelegram) {
+  try {
     sendToBot(payload);
-  } else {
-    alert('Demo sendData:\n' + JSON.stringify(payload, null, 2));
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+    toast('Заявка отправлена');
+    closeRequest();
+  } catch (err) {
+    console.error('[Request Form] sendData error:', err);
+    tg?.HapticFeedback?.notificationOccurred?.('error');
+    tg?.showAlert?.('Не удалось отправить заявку');
   }
-
   closeConsult();
-  toast('Запрос отправлен');
 });
 
 // ======= ЭКРАНЫ ===================
