@@ -137,23 +137,26 @@ if (inTelegram) {
 }
 
 async function sendToBot(payload) {
+  const API = window.__API_URL; // задан в index.html
   try {
     console.log('[sendToBot] payload:', payload);
 
-    const res = await fetch('/lead', {
+    if (!API) throw new Error('API_URL не задан');
+
+    const res = await fetch(`${API}/lead`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      // credentials не нужны; CORS решим на сервере
     });
 
-    let data = null;
-    try {
-      data = await res.json();
-    } catch {
-      data = { ok: false, error: 'empty response' };
-    }
+    const data = await res.json().catch(() => ({ ok: false, error: 'empty' }));
 
-    console.log('[sendToBot] server response:', data);
+    console.log('[sendToBot] response:', data);
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
 
     tg?.HapticFeedback?.notificationOccurred?.('success');
     toast('Заявка отправлена');
