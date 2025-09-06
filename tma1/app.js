@@ -215,7 +215,7 @@ const PRODUCTS = [
       'Интеграции (CRM, таблицы, платежи)',
       'Готовые шаблоны сценариев'
     ]},
-  { id:'tma-chatbot', title:'ТМА с чат-ботом', img:'./assets/cards/tma-chatbot.jpg',
+  { id:'tma-chatbot',title:'ТМА с чат-ботом', img:'./assets/cards/tma-chatbot.jpg',
     short:'Ассистент который продаёт за вас',
     long:[
       'Показывайте товары/услуги во фронте ТМА и отвечайте на вопросы диалогом в чате.',
