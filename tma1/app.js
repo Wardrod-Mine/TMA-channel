@@ -229,6 +229,12 @@ const PRODUCTS = [
     ]},
 ];
 
+// app.js — в renderCards(), сразу после img.src = p.img;
+img.onerror = () => {
+  console.warn('Image failed:', p.img);
+  img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="100%" height="100%" fill="%23161b22"/><text x="50%" y="50%" fill="%238b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">Нет изображения</text></svg>';
+};
+
 // ============= UI ВСПОМОГАТЕЛЬНЫЕ ===============
 function toast(msg){
   toastEl.textContent = msg;
