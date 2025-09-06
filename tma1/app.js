@@ -191,8 +191,8 @@ function inCart(id){ return CART.items.some(x => x.id === id); }
 
 // ============ ДАННЫЕ ТОВАРОВ ================
 const PRODUCTS = [
-  { id:'tma', title:'Telegram Mini App (ТМА)', img:'https://placehold.co/800x500/png?text=Telegram+Mini+App',
-    short:'Готовое мини-приложение в Telegram: быстрый старт, нативные кнопки, светлая/тёмная тема.',
+  { id:'tma', title:'Telegram Mini App (ТМА)', img:'./assets/cards/tma.jpg',
+    short:'Ваш сайт прямо в Telegram',
     long:[
       'Идеально для витрин, форм заявок и мини-сервисов внутри Telegram.',
       'Поддержка MainButton/BackButton, themeParams, sendData для связи с ботом.',
@@ -203,8 +203,8 @@ const PRODUCTS = [
       'Готовая структура для каталога/форм/оплаты',
       'Быстрый деплой на любой статический хостинг'
     ]},
-  { id:'tg-bot', title:'TG-бот (классический бот)', img:'https://placehold.co/800x500/png?text=Telegram+Bot',
-    short:'Бот с командами, меню и кнопками — для поддержки, продаж, заявок и автоматизации.',
+  { id:'tg-bot', title:'TG-бот (классический бот)', img:'./assets/cards/tg-bot.jpg',
+    short:'Продажи и поддержка без лишних движений',
     long:[
       'Подходит для рассылок, обработки заявок, FAQ и интеграций.',
       'Варианты подключения: webhook или long polling.',
@@ -215,8 +215,8 @@ const PRODUCTS = [
       'Интеграции (CRM, таблицы, платежи)',
       'Готовые шаблоны сценариев'
     ]},
-  { id:'tma-chatbot', title:'ТМА с чат-ботом', img:'https://placehold.co/800x500/png?text=TMA+%2B+Chatbot',
-    short:'Комбо: мини-приложение + диалоговый ассистент. Витрина + умные ответы в одном окне.',
+  { id:'tma-chatbot', title:'ТМА с чат-ботом', img:'./assets/cards/tma-chatbot.jpg',
+    short:'Ассистент который продаёт за вас',
     long:[
       'Показывайте товары/услуги во фронте ТМА и отвечайте на вопросы диалогом в чате.',
       'Сбор лидов через sendData, аналитика источников, масштабирование сценариев.',
