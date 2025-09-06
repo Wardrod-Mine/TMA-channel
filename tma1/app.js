@@ -191,7 +191,7 @@ function inCart(id){ return CART.items.some(x => x.id === id); }
 
 // ============ ДАННЫЕ ТОВАРОВ ================
 const PRODUCTS = [
-  { id:'tma', title:'Telegram Mini App (ТМА)', img:'./assets/cards/tma.jpg',
+  { id:'tma', title:'Telegram Mini App (ТМА)', img:'./assets/cards/tma.png',
     short:'Ваш сайт прямо в Telegram',
     long:[
       'Идеально для витрин, форм заявок и мини-сервисов внутри Telegram.',
@@ -203,7 +203,7 @@ const PRODUCTS = [
       'Готовая структура для каталога/форм/оплаты',
       'Быстрый деплой на любой статический хостинг'
     ]},
-  { id:'tg-bot', title:'TG-бот (классический бот)', img:'./assets/cards/tg-bot.jpg',
+  { id:'tg-bot', title:'TG-бот (классический бот)', img:'./assets/cards/tg-bot.png',
     short:'Продажи и поддержка без лишних движений',
     long:[
       'Подходит для рассылок, обработки заявок, FAQ и интеграций.',
@@ -215,7 +215,7 @@ const PRODUCTS = [
       'Интеграции (CRM, таблицы, платежи)',
       'Готовые шаблоны сценариев'
     ]},
-  { id:'tma-chatbot',title:'ТМА с чат-ботом', img:'./assets/cards/tma-chatbot.jpg',
+  { id:'tma-chatbot',title:'ТМА с чат-ботом', img:'./assets/cards/tma-chatbot.png',
     short:'Ассистент который продаёт за вас',
     long:[
       'Показывайте товары/услуги во фронте ТМА и отвечайте на вопросы диалогом в чате.',
