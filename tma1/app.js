@@ -265,10 +265,16 @@ function renderCards() {
     img.alt = p.title;
     img.loading = 'lazy';
     img.className = 'w-full img-cover';
-    img.onerror = () => {
-      console.warn('Image failed:', p.img);
-      img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="100%" height="100%" fill="%23161b22"/><text x="50%" y="50%" fill="%238b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">Нет изображения</text></svg>';
-    };
+    img.onerror = () => { 
+    if (p.img.endsWith('.png')) {
+      const jpg = p.img.replace('.png', '.jpg');
+      img.onerror = () => {
+        console.warn('Image not found:', p.img, 'and', jpg);
+        img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="100%" height="100%" fill="%23161b22"/><text x="50%" y="50%" fill="%238b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">Нет изображения</text></svg>';
+      };
+    img.src = jpg;
+  }
+};
 
     link.appendChild(img);
 
