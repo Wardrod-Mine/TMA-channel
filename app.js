@@ -642,9 +642,9 @@ function showDetail(productId){
   setImgWithFallback(detailImg, buildImageCandidates(p.img, isDark));
   detailImg.alt = p.title;
 
-  const chosen = getVariantSrc(p.img, useGold);
+  setImgWithFallback(detailImg, buildImageCandidates(p.img, isDark));
   detailImg.dataset.original = p.img;
-  detailImg.src = chosen; detailImg.alt = p.title;
+  detailImg.alt = p.title;
   detailImg.onerror = () => { if (detailImg.src !== p.img){ detailImg.onerror = null; detailImg.src = p.img; } };
   detailTitle.textContent = p.title; detailShort.textContent = p.short;
 
