@@ -484,18 +484,6 @@ function renderCards() {
     img.loading = 'lazy';
     img.className = 'w-full img-cover';
 
-    img.onerror = () => {
-      const orig = img.dataset.original || p.img;
-      const fallback = orig;
-      if (img.src !== fallback){ img.onerror = null; img.src = fallback; return; }
-      if (fallback.endsWith('.png')){
-        const jpg = fallback.replace('.png', '.jpg');
-        img.onerror = () => { img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="100%" height="100%" fill="%23161b22"/><text x="50%" y="50%" fill="%238b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">Нет изображения</text></svg>'; };
-        img.src = jpg; return;
-      }
-      img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="100%" height="100%" fill="%23161b22"/><text x="50%" y="50%" fill="%238b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">Нет изображения</text></svg>';
-    };
-
     link.appendChild(img);
 
     const body = document.createElement('div');
@@ -647,7 +635,6 @@ function showDetail(productId){
   setImgWithFallback(detailImg, buildImageCandidates(p.img, isDark));
   detailImg.dataset.original = p.img;
   detailImg.alt = p.title;
-  detailImg.onerror = () => { if (detailImg.src !== p.img){ detailImg.onerror = null; detailImg.src = p.img; } };
   detailTitle.textContent = p.title; detailShort.textContent = p.short;
 
   detailBullets.innerHTML = '';
@@ -696,6 +683,7 @@ function handleStartParam(raw){
 }
 
 renderCards();
+updateImagesByMode(getStoredThemeMode());
 updateCartUI();
 handleStartParam(getStartParam());
 window.addEventListener('hashchange', router);
