@@ -163,13 +163,12 @@ async function sendToBot(payload) {
 }
 
 function applyThemeFromTelegram() {
-  // Если пользователь выбрал явную тему — не перезаписываем цвета Telegram
-  const mode = getStoredThemeMode();
-  if (mode !== 'auto') return;
   if (!inTelegram) return;
+
   const tp = tg.themeParams || {};
   const root = document.documentElement;
   const set = (v, val, fb) => root.style.setProperty(v, val || fb);
+
   set('--bg', tp.bg_color, '#0e1117');
   set('--text', tp.text_color, '#e6edf3');
   set('--hint', tp.hint_color, '#8b949e');
@@ -178,13 +177,22 @@ function applyThemeFromTelegram() {
   set('--btn-text', tp.button_text_color, '#ffffff');
   set('--card', tp.secondary_bg_color, '#161b22');
   set('--sep', tp.section_separator_color, 'rgba(255,255,255,.08)');
+  updateImagesByMode('auto');
 }
+
 applyThemeFromTelegram();
 
 // ---------------- THEME / COLOR FROM IMAGE ----------------------------------
 
-function getStoredThemeMode(){ try{ return localStorage.getItem('themeMode') || 'auto'; }catch(e){ return 'auto'; } }
-function saveStoredThemeMode(m){ try{ localStorage.setItem('themeMode', m); }catch(e){} }
+function getStoredThemeMode(){
+  if (inTelegram) return 'auto';
+  try{ return localStorage.getItem('themeMode') || 'auto'; }catch(e){ return 'auto'; }
+}
+function saveStoredThemeMode(m){
+  if (inTelegram) return;
+  try{ localStorage.setItem('themeMode', m); }catch(e){}
+}
+
 
 function rgbToCss(r,g,b){ return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`; }
 
@@ -192,12 +200,11 @@ function luminance(r,g,b){ return 0.2126*r + 0.7152*g + 0.0722*b; }
 
 function clamp(v, a=0, b=255){ return Math.max(a, Math.min(b, v)); }
 
-function mixColor(r,g,b, factor){ // factor -0..1 -> mix with black if negative, white if >1? keep simple: darken if factor<1
+function mixColor(r,g,b, factor){ 
   return { r: clamp(r*factor), g: clamp(g*factor), b: clamp(b*factor) };
 }
 
 // --- IMAGES: light/dark variants --------------------------------------------
-
 const DARK_SUFFIX = '-gold';
 const NO_IMAGE_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500">
@@ -225,16 +232,12 @@ function buildImageCandidates(orig, isDark){
   const { base, ext } = splitExt(orig);
   const c = [];
 
-  // 1) dark variants first
   if (isDark) {
     if (ext) c.push(`${base}${DARK_SUFFIX}.${ext}`);
     c.push(`${base}${DARK_SUFFIX}.jpg`, `${base}${DARK_SUFFIX}.jpeg`, `${base}${DARK_SUFFIX}.png`);
   }
-
-  // 2) original
   c.push(orig);
 
-  // 3) fallback other extension for original
   if (ext === 'png') c.push(`${base}.jpg`, `${base}.jpeg`);
   if (ext === 'jpg' || ext === 'jpeg') c.push(`${base}.png`);
 
@@ -254,7 +257,6 @@ function setImgWithFallback(imgEl, candidates){
   };
   imgEl.src = candidates[i];
 }
-
 
 function parseCssColor(str){
   if (!str) return null;
@@ -292,7 +294,6 @@ function detectDarkFromCss(){
 function updateImagesByMode(mode){
   const isDark = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
 
-  // cards
   const imgs = cardsRoot.querySelectorAll('img');
   imgs.forEach(img => {
     const orig = img.dataset.original || img.getAttribute('data-original') || img.src;
@@ -300,7 +301,6 @@ function updateImagesByMode(mode){
     setImgWithFallback(img, buildImageCandidates(orig, isDark));
   });
 
-  // detail
   if (!detailView.classList.contains('hidden') && detailImg){
     const orig = detailImg.dataset.original || detailImg.src;
     detailImg.dataset.original = orig;
@@ -371,17 +371,21 @@ async function applyThemeMode(mode){
     updateImagesByMode(mode);
     return;
   }
-  // auto: restore Telegram if available, otherwise keep current; color-from-image will override when detail image loaded
   applyThemeFromTelegram();
-  // update images according to mode
   updateImagesByMode(mode);
 }
 
-// Listen UI
-if (themeModeSelect) themeModeSelect.addEventListener('change', (e)=>{ applyThemeMode(e.target.value); });
+if (themeModeSelect && !inTelegram) {
+  themeModeSelect.addEventListener('change', (e)=>{ applyThemeMode(e.target.value); });
+} else if (themeModeSelect && inTelegram) {
+  themeModeSelect.value = 'auto';
+  themeModeSelect.disabled = true;
+  themeModeSelect.parentElement?.classList.add('hidden'); 
+}
 
-// When detail image loads, if mode is auto -> extract color and apply
 detailImg.addEventListener('load', async ()=>{
+  if (inTelegram) return;
+
   try{
     const mode = getStoredThemeMode();
     if (mode !== 'auto') return;
@@ -390,7 +394,6 @@ detailImg.addEventListener('load', async ()=>{
   }catch(err){ console.warn('color extract error', err); }
 });
 
-// Init theme from stored value
 applyThemeMode(getStoredThemeMode());
 
 // ============== СОСТОЯНИЕ КОРЗИНЫ/ЗАЯВКИ ===================
