@@ -54,6 +54,14 @@
       <button id="backBtn" class="btn rounded-lg px-3 py-2 text-sm hidden">Назад</button>
       <h1 class="text-lg font-semibold">Магазин решений</h1>
       <span class="ml-auto text-sm muted" id="usernameSlot"></span>
+      <div class="ml-3 flex items-center gap-2">
+        <label for="themeMode" class="text-sm muted">Тема</label>
+        <select id="themeMode" class="rounded-lg bg-transparent border px-2 py-1 text-sm" style="border-color:var(--sep)">
+          <option value="auto">Авто</option>
+          <option value="light">Светлая</option>
+          <option value="dark">Тёмная</option>
+        </select>
+      </div>
       <button id="cartBtn" class="rounded-lg px-3 py-2 text-sm border hidden" style="border-color:var(--sep)">
         Заявка <span id="cartCount" class="ml-1">0</span>
       </button>

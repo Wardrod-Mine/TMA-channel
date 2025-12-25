@@ -16,9 +16,8 @@ const buyBtn = $('#buyBtn');
 const cartBtn = $('#cartBtn');
 const cartCount = $('#cartCount');
 const toastEl = $('#toast');
-
-// Модалка консультации
 const consultModal = $('#consultModal');
+const themeModeSelect = $('#themeMode');
 const consultForm = $('#consultForm');
 const consultCancel = $('#consultCancel');
 const consultProductTitle = $('#consultProductTitle');
@@ -46,7 +45,6 @@ function closeRequest(){
   requestContext = null;
 }
 
-// Утилиты для плавных модалок
 function modalShow(el){
   el.classList.remove('hidden');
   requestAnimationFrame(()=> el.classList.add('show'));
@@ -74,8 +72,6 @@ function openRequest(product){
 
   if (requestModal) modalShow(requestModal);
 }
-
-
 
 requestCancel.addEventListener('click', closeRequest);
 
@@ -137,7 +133,7 @@ if (inTelegram) {
 }
 
 async function sendToBot(payload) {
-  const API = window.__API_URL; // задан в index.html
+  const API = window.__API_URL;
   try {
     console.log('[sendToBot] payload:', payload);
 
@@ -147,7 +143,6 @@ async function sendToBot(payload) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      // credentials не нужны; CORS решим на сервере
     });
 
     const data = await res.json().catch(() => ({ ok: false, error: 'empty' }));
@@ -168,6 +163,9 @@ async function sendToBot(payload) {
 }
 
 function applyThemeFromTelegram() {
+  // Если пользователь выбрал явную тему — не перезаписываем цвета Telegram
+  const mode = getStoredThemeMode();
+  if (mode !== 'auto') return;
   if (!inTelegram) return;
   const tp = tg.themeParams || {};
   const root = document.documentElement;
@@ -182,6 +180,178 @@ function applyThemeFromTelegram() {
   set('--sep', tp.section_separator_color, 'rgba(255,255,255,.08)');
 }
 applyThemeFromTelegram();
+
+// ---------------- THEME / COLOR FROM IMAGE ----------------------------------
+
+function getStoredThemeMode(){ try{ return localStorage.getItem('themeMode') || 'auto'; }catch(e){ return 'auto'; } }
+function saveStoredThemeMode(m){ try{ localStorage.setItem('themeMode', m); }catch(e){} }
+
+function rgbToCss(r,g,b){ return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`; }
+
+function luminance(r,g,b){ return 0.2126*r + 0.7152*g + 0.0722*b; }
+
+function clamp(v, a=0, b=255){ return Math.max(a, Math.min(b, v)); }
+
+function mixColor(r,g,b, factor){ // factor -0..1 -> mix with black if negative, white if >1? keep simple: darken if factor<1
+  return { r: clamp(r*factor), g: clamp(g*factor), b: clamp(b*factor) };
+}
+
+function getVariantSrc(orig, useGold){
+  if (!useGold) return orig;
+  // insert -gold before extension
+  try{
+    const parts = orig.split('.');
+    if (parts.length < 2) return orig;
+    const ext = parts.pop();
+    const base = parts.join('.');
+    return `${base}-gold.${ext}`;
+  }catch(e){ return orig; }
+}
+
+function parseCssColor(str){
+  if (!str) return null;
+  str = str.trim();
+  if (str.startsWith('rgb')){
+    const m = str.match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    const parts = m[1].split(',').map(p=>parseFloat(p));
+    return { r: parts[0], g: parts[1], b: parts[2] };
+  }
+  if (str.startsWith('#')){
+    const hex = str.slice(1);
+    if (hex.length===3){
+      const r = parseInt(hex[0]+hex[0],16);
+      const g = parseInt(hex[1]+hex[1],16);
+      const b = parseInt(hex[2]+hex[2],16);
+      return {r,g,b};
+    }
+    if (hex.length===6){
+      const r = parseInt(hex.slice(0,2),16);
+      const g = parseInt(hex.slice(2,4),16);
+      const b = parseInt(hex.slice(4,6),16);
+      return {r,g,b};
+    }
+  }
+  return null;
+}
+
+function detectDarkFromCss(){
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '';
+  const col = parseCssColor(bg) || {r:14,g:17,b:23};
+  return luminance(col.r,col.g,col.b) < 140;
+}
+
+function updateImagesByMode(mode){
+  const useGold = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
+  // update card images
+  const imgs = cardsRoot.querySelectorAll('img');
+  imgs.forEach(img => {
+    const orig = img.dataset.original || img.getAttribute('data-original') || img.src;
+    const primary = getVariantSrc(orig, useGold);
+    const fallback = orig;
+    if (img.src === primary) return;
+    img.onerror = null;
+    img.src = primary;
+    img.onerror = function(){
+      // try fallback original
+      if (img.src !== fallback){ img.onerror = null; img.src = fallback; }
+    };
+  });
+  // update detail image if visible
+  if (!detailView.classList.contains('hidden') && detailImg){
+    const orig = detailImg.dataset.original || detailImg.src;
+    const primary = getVariantSrc(orig, useGold);
+    const fallback = orig;
+    detailImg.onerror = null;
+    detailImg.src = primary;
+    detailImg.onerror = function(){ if (detailImg.src !== fallback){ detailImg.onerror = null; detailImg.src = fallback; } };
+  }
+}
+
+async function extractAverageColor(imgEl){
+  return new Promise((resolve)=>{
+    try{
+      const img = imgEl;
+      const canvas = document.createElement('canvas');
+      const w = 64, h = 64;
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const data = ctx.getImageData(0,0,w,h).data;
+      let r=0,g=0,b=0,c=0;
+      const step = 4*4; // sample every 4th pixel
+      for (let i=0;i<data.length;i+=step){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; c++; }
+      if (c===0) return resolve({r:16,g:20,b:28});
+      resolve({ r: r/c, g: g/c, b: b/c });
+    }catch(err){ resolve({r:16,g:20,b:28}); }
+  });
+}
+
+function applyColorsFromPhoto(rgb){
+  const root = document.documentElement;
+  const {r,g,b} = rgb;
+  const primary = rgbToCss(r,g,b);
+  // decide bg/text by luminance
+  const lum = luminance(r,g,b);
+  const isDark = lum < 140;
+  // background slightly adjusted
+  const bg = isDark ? 'rgb(10,12,16)' : 'rgb(250,250,250)';
+  const text = isDark ? 'rgb(230,235,240)' : 'rgb(18,20,22)';
+  // card color - mix primary with bg
+  const cardMix = mixColor(r,g,b, isDark ? 0.35 : 0.9);
+  const card = rgbToCss(cardMix.r, cardMix.g, cardMix.b);
+
+  root.style.setProperty('--btn', primary);
+  root.style.setProperty('--link', primary);
+  root.style.setProperty('--bg', bg);
+  root.style.setProperty('--text', text);
+  root.style.setProperty('--card', card);
+  root.style.setProperty('--sep', isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)');
+}
+
+async function applyThemeMode(mode){
+  if (!mode) mode = getStoredThemeMode();
+  if (themeModeSelect) themeModeSelect.value = mode;
+  saveStoredThemeMode(mode);
+  if (mode === 'light'){
+    document.documentElement.style.setProperty('--bg', '#ffffff');
+    document.documentElement.style.setProperty('--text', '#0b1220');
+    document.documentElement.style.setProperty('--card', '#f6f7f8');
+    document.documentElement.style.setProperty('--btn', '#0b84ff');
+    document.documentElement.style.setProperty('--link', '#0b84ff');
+    updateImagesByMode(mode);
+    return;
+  }
+  if (mode === 'dark'){
+    document.documentElement.style.setProperty('--bg', '#0e1117');
+    document.documentElement.style.setProperty('--text', '#e6edf3');
+    document.documentElement.style.setProperty('--card', '#161b22');
+    document.documentElement.style.setProperty('--btn', '#2ea043');
+    document.documentElement.style.setProperty('--link', '#4495ff');
+    updateImagesByMode(mode);
+    return;
+  }
+  // auto: restore Telegram if available, otherwise keep current; color-from-image will override when detail image loaded
+  applyThemeFromTelegram();
+  // update images according to mode
+  updateImagesByMode(mode);
+}
+
+// Listen UI
+if (themeModeSelect) themeModeSelect.addEventListener('change', (e)=>{ applyThemeMode(e.target.value); });
+
+// When detail image loads, if mode is auto -> extract color and apply
+detailImg.addEventListener('load', async ()=>{
+  try{
+    const mode = getStoredThemeMode();
+    if (mode !== 'auto') return;
+    const rgb = await extractAverageColor(detailImg);
+    applyColorsFromPhoto(rgb);
+  }catch(err){ console.warn('color extract error', err); }
+});
+
+// Init theme from stored value
+applyThemeMode(getStoredThemeMode());
 
 // ============== СОСТОЯНИЕ КОРЗИНЫ/ЗАЯВКИ ===================
 let CART = loadCart();
@@ -261,19 +431,27 @@ function renderCards() {
     link.className = 'block';
 
     const img = document.createElement('img');
-    img.src = p.img;
+    // remember original source
+    img.dataset.original = p.img;
+    // choose variant according to stored mode
+    const mode = getStoredThemeMode();
+    const useGold = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
+    img.src = getVariantSrc(p.img, useGold);
     img.alt = p.title;
     img.loading = 'lazy';
     img.className = 'w-full img-cover';
-    img.onerror = () => { 
-    if (p.img.endsWith('.png')) {
-      const jpg = p.img.replace('.png', '.jpg');
-      img.onerror = () => {
-        console.warn('Image not found:', p.img, 'and', jpg);
-        img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="100%" height="100%" fill="%23161b22"/><text x="50%" y="50%" fill="%238b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">Нет изображения</text></svg>';
-      };
-      img.src = jpg;
+    img.onerror = () => {
+      const orig = img.dataset.original || p.img;
+      // if we tried gold variant, try original
+      const fallback = orig;
+      if (img.src !== fallback){ img.onerror = null; img.src = fallback; return; }
+      // then try jpg variant
+      if (fallback.endsWith('.png')){
+        const jpg = fallback.replace('.png', '.jpg');
+        img.onerror = () => { img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="100%" height="100%" fill="%23161b22"/><text x="50%" y="50%" fill="%238b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">Нет изображения</text></svg>'; };
+        img.src = jpg; return;
       }
+      img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="100%" height="100%" fill="%23161b22"/><text x="50%" y="50%" fill="%238b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">Нет изображения</text></svg>';
     };
 
     link.appendChild(img);
@@ -342,7 +520,6 @@ function prepareSend(product, action, viaMainButton = false) {
   }
 }
 
-// Корзина
 function addToCart(product){
   if (inCart(product.id)) { toast('Уже в заявке'); return; }
   CART.items.push({ id: product.id, title: product.title });
@@ -365,7 +542,6 @@ function sendCart(){
 }
 cartBtn.addEventListener('click', ()=>{ if (CART.items.length) sendCart(); });
 
-// Консультация
 let consultContext = null;
 function openConsult(product){
   consultContext = product || null;
@@ -380,12 +556,10 @@ consultModal.addEventListener('click', (e)=>{
   if (e.target === consultModal) closeConsult();
 });
 
-// Кнопка на главном экране
 if (consultBtnMain) {
   consultBtnMain.addEventListener('click', () => openConsult(null));
 }
 
-// Отправка консультации
 consultForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const contact = cContact.value.trim();
@@ -420,7 +594,13 @@ function showDetail(productId){
   const p = PRODUCTS.find(x => x.id === productId);
   if (!p) return showList();
 
-  detailImg.src = p.img; detailImg.alt = p.title;
+  // choose correct image variant for current theme
+  const mode = getStoredThemeMode();
+  const useGold = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
+  const chosen = getVariantSrc(p.img, useGold);
+  detailImg.dataset.original = p.img;
+  detailImg.src = chosen; detailImg.alt = p.title;
+  detailImg.onerror = () => { if (detailImg.src !== p.img){ detailImg.onerror = null; detailImg.src = p.img; } };
   detailTitle.textContent = p.title; detailShort.textContent = p.short;
 
   detailBullets.innerHTML = '';
