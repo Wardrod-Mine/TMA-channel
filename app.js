@@ -196,17 +196,65 @@ function mixColor(r,g,b, factor){ // factor -0..1 -> mix with black if negative,
   return { r: clamp(r*factor), g: clamp(g*factor), b: clamp(b*factor) };
 }
 
-function getVariantSrc(orig, useGold){
-  if (!useGold) return orig;
-  // insert -gold before extension
-  try{
-    const parts = orig.split('.');
-    if (parts.length < 2) return orig;
-    const ext = parts.pop();
-    const base = parts.join('.');
-    return `${base}-gold.${ext}`;
-  }catch(e){ return orig; }
+// --- IMAGES: light/dark variants --------------------------------------------
+
+const DARK_SUFFIX = '-gold';
+const NO_IMAGE_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500">
+     <rect width="100%" height="100%" fill="#161b22"/>
+     <text x="50%" y="50%" fill="#8b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">
+       Нет изображения
+     </text>
+   </svg>`
+);
+
+function splitExt(path){
+  const m = String(path || '').match(/^(.*)\.([a-z0-9]+)$/i);
+  if (!m) return { base: path, ext: '' };
+  return { base: m[1], ext: m[2].toLowerCase() };
 }
+
+function uniq(arr){
+  const s = new Set();
+  const out = [];
+  for (const x of arr) if (x && !s.has(x)) { s.add(x); out.push(x); }
+  return out;
+}
+
+function buildImageCandidates(orig, isDark){
+  const { base, ext } = splitExt(orig);
+  const c = [];
+
+  // 1) dark variants first
+  if (isDark) {
+    if (ext) c.push(`${base}${DARK_SUFFIX}.${ext}`);
+    c.push(`${base}${DARK_SUFFIX}.jpg`, `${base}${DARK_SUFFIX}.jpeg`, `${base}${DARK_SUFFIX}.png`);
+  }
+
+  // 2) original
+  c.push(orig);
+
+  // 3) fallback other extension for original
+  if (ext === 'png') c.push(`${base}.jpg`, `${base}.jpeg`);
+  if (ext === 'jpg' || ext === 'jpeg') c.push(`${base}.png`);
+
+  return uniq(c);
+}
+
+function setImgWithFallback(imgEl, candidates){
+  let i = 0;
+  imgEl.onerror = () => {
+    i++;
+    if (i < candidates.length) {
+      imgEl.src = candidates[i];
+    } else {
+      imgEl.onerror = null;
+      imgEl.src = NO_IMAGE_SVG;
+    }
+  };
+  imgEl.src = candidates[i];
+}
+
 
 function parseCssColor(str){
   if (!str) return null;
@@ -242,29 +290,21 @@ function detectDarkFromCss(){
 }
 
 function updateImagesByMode(mode){
-  const useGold = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
-  // update card images
+  const isDark = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
+
+  // cards
   const imgs = cardsRoot.querySelectorAll('img');
   imgs.forEach(img => {
     const orig = img.dataset.original || img.getAttribute('data-original') || img.src;
-    const primary = getVariantSrc(orig, useGold);
-    const fallback = orig;
-    if (img.src === primary) return;
-    img.onerror = null;
-    img.src = primary;
-    img.onerror = function(){
-      // try fallback original
-      if (img.src !== fallback){ img.onerror = null; img.src = fallback; }
-    };
+    img.dataset.original = orig;
+    setImgWithFallback(img, buildImageCandidates(orig, isDark));
   });
-  // update detail image if visible
+
+  // detail
   if (!detailView.classList.contains('hidden') && detailImg){
     const orig = detailImg.dataset.original || detailImg.src;
-    const primary = getVariantSrc(orig, useGold);
-    const fallback = orig;
-    detailImg.onerror = null;
-    detailImg.src = primary;
-    detailImg.onerror = function(){ if (detailImg.src !== fallback){ detailImg.onerror = null; detailImg.src = fallback; } };
+    detailImg.dataset.original = orig;
+    setImgWithFallback(detailImg, buildImageCandidates(orig, isDark));
   }
 }
 
@@ -431,21 +471,21 @@ function renderCards() {
     link.className = 'block';
 
     const img = document.createElement('img');
-    // remember original source
     img.dataset.original = p.img;
-    // choose variant according to stored mode
+
     const mode = getStoredThemeMode();
-    const useGold = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
-    img.src = getVariantSrc(p.img, useGold);
+    const isDark = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
+
+    setImgWithFallback(img, buildImageCandidates(p.img, isDark));
+
     img.alt = p.title;
     img.loading = 'lazy';
     img.className = 'w-full img-cover';
+
     img.onerror = () => {
       const orig = img.dataset.original || p.img;
-      // if we tried gold variant, try original
       const fallback = orig;
       if (img.src !== fallback){ img.onerror = null; img.src = fallback; return; }
-      // then try jpg variant
       if (fallback.endsWith('.png')){
         const jpg = fallback.replace('.png', '.jpg');
         img.onerror = () => { img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="100%" height="100%" fill="%23161b22"/><text x="50%" y="50%" fill="%238b949e" dy=".3em" font-family="Arial" font-size="20" text-anchor="middle">Нет изображения</text></svg>'; };
@@ -596,7 +636,12 @@ function showDetail(productId){
 
   // choose correct image variant for current theme
   const mode = getStoredThemeMode();
-  const useGold = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
+  const isDark = (mode === 'dark') || (mode === 'auto' && detectDarkFromCss());
+
+  detailImg.dataset.original = p.img;
+  setImgWithFallback(detailImg, buildImageCandidates(p.img, isDark));
+  detailImg.alt = p.title;
+
   const chosen = getVariantSrc(p.img, useGold);
   detailImg.dataset.original = p.img;
   detailImg.src = chosen; detailImg.alt = p.title;
