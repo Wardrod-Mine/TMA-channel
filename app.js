@@ -177,13 +177,12 @@ function applyThemeFromTelegram() {
   set('--btn-text', tp.button_text_color, '#ffffff');
   set('--card', tp.secondary_bg_color, '#161b22');
   set('--sep', tp.section_separator_color, 'rgba(255,255,255,.08)');
+
   updateImagesByMode('auto');
 }
-
 applyThemeFromTelegram();
 
 // ---------------- THEME / COLOR FROM IMAGE ----------------------------------
-
 function getStoredThemeMode(){
   if (inTelegram) return 'auto';
   try{ return localStorage.getItem('themeMode') || 'auto'; }catch(e){ return 'auto'; }
